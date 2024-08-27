@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { Box, Divider, Typography } from '@mui/material';
-import FoodCard from '../components/cardComponents/FoodCard';
-import AttractionCard from '../components/cardComponents/AttractionCard';
-import HotelCard from '../components/cardComponents/HotelCard';
-import FoodDialog from '../components/cardComponents/FoodDialog';
+import FoodCard from './cardComponents/FoodCard';
+import AttractionCard from './cardComponents/AttractionCard';
+import HotelCard from './cardComponents/HotelCard';
+import FoodDialog from './cardComponents/FoodDialog';
 
 interface SuggestionProps {
     foodAndDrinks: { foodAndDrink_name: string }[];

@@ -1,8 +1,8 @@
 import { Box } from "@mui/material";
-import ChatWindow from "../components/chatComponents/ChatWindow";
-import InputBox from "../components/chatComponents/InputBox";
-import { useState, useCallback, useRef } from "react";
-import { sendMessage } from "../api";
+import ChatWindow from "./chatComponents/ChatWindow";
+import InputBox from "./chatComponents/InputBox";
+import { useState, useCallback } from "react";
+import { sendMessage } from "../../api";
 
 interface Message {
     sender: string;
@@ -16,7 +16,6 @@ interface ChatProps {
 
 const Chat: React.FC<ChatProps> = ({ messages, setMessages }) => {
     const [loading, setLoading] = useState<boolean>(false);
-    const inputRef = useRef<HTMLInputElement>(null); // Create a reference for the input box
 
     const onSend = useCallback((text: string) => {
         if (loading) return;
