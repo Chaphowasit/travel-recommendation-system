@@ -135,31 +135,41 @@ const RoutingRecommender: React.FC = () => {
     const getIntervalText = () => {
         const intervals = [];
         let currentIndex = 0;
-
+    
+        // Handle Breakfast
         if (includeBreakfast) {
             intervals.push(`Breakfast: ${formatTime(times[currentIndex])} - ${formatTime(times[currentIndex + 1])}`);
             currentIndex += 2;
         }
-
+    
+        // Handle Lunch
         if (includeLunch) {
-            const travelStart = includeBreakfast ? times[currentIndex - 1] : times[currentIndex];
-            const travelEnd = includeBreakfast ? times[currentIndex] : times[currentIndex + 1];
+            const travelStart = times[currentIndex - 1] || times[currentIndex];
+            const travelEnd = times[currentIndex];
             intervals.push(`Travel Time 1: ${formatTime(travelStart)} - ${formatTime(travelEnd)}`);
-            const lunchEnd = includeBreakfast ? times[currentIndex + 1] : times[currentIndex + 2];
+            
+            const lunchEnd = times[currentIndex + 1];
             intervals.push(`Lunch: ${formatTime(travelEnd)} - ${formatTime(lunchEnd)}`);
-            currentIndex += 2;
+            
+            currentIndex += 2;  // Move past lunch end time
             intervals.push(`Travel Time 2: ${formatTime(times[currentIndex - 1])} - ${formatTime(times[currentIndex])}`);
         } else {
-            const travelStart = includeBreakfast ? times[currentIndex - 1] : times[currentIndex];
-            const travelEnd = times[currentIndex+1];
-            intervals.push(`Travel Time: ${formatTime(travelStart)} - ${formatTime(travelEnd)}`);
+            // Handle case when lunch is not included
+            const travelStart = times[currentIndex - 1] || times[currentIndex];
+            const travelMid = times[currentIndex];
+            const travelEnd = times[currentIndex + 1];
+            
+            intervals.push(`Travel Time 1: ${formatTime(travelStart)} - ${formatTime(travelMid)}`);
+            intervals.push(`Travel Time 2: ${formatTime(travelMid)} - ${formatTime(travelEnd)}`);
+            
             currentIndex += 1;
         }
-
+    
+        // Handle Dinner
         if (includeDinner) {
             intervals.push(`Dinner: ${formatTime(times[currentIndex])} - ${formatTime(times[currentIndex + 1])}`);
         }
-
+    
         return intervals;
     };
 
