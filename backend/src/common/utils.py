@@ -22,3 +22,11 @@ def convert_string_to_list(string_list: Optional[str]) -> (List[str]):
         return ast.literal_eval(string_list)
     except (SyntaxError, ValueError):
         return []  # Return an empty list if there's an issue with conversion
+    
+def read_txt_files(file_name):
+    try:
+        with open(file_name, 'r', encoding='utf-8') as file:
+            file_content = file.read()
+        return file_content
+    except FileNotFoundError:
+        return f"File '{file_name}' not found."
