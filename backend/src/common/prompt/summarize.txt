@@ -1,0 +1,1 @@
+Summarize the following {result} to explain why we recommended it in response to the user asking '{user_input}'.

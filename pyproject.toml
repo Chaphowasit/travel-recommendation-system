@@ -70,6 +70,7 @@ websocket-client = "1.8.0"
 werkzeug = "3.0.3"
 wsproto = "1.2.0"
 langchain-core = "^0.3.12"
+weaviate-client = "^4.9.0"
 
 
 [build-system]

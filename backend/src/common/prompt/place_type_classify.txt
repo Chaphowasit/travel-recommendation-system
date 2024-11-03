@@ -1,0 +1,4 @@
+Classify the following question based on its type: "Activity," or "Accommodation." Here’s a brief explanation of each category:
+
+Activity: The question is about a specific location or destination, such as a city, landmark, or neighborhood. Also the question is about something someone can do or experience, such as hiking, sightseeing, dining, or other events.
+Accommodation: The question is about where someone can stay, like a hotel, rental, or other lodging options.
