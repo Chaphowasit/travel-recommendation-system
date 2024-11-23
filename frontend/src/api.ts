@@ -19,7 +19,7 @@ export const sendIntervals = (intervals: {
     travel2?: {start: number, end: number},
     dinner?: {start: number, end: number},
 }) =>
-    axiosInstance.post('/vrp/process', {
+    axiosInstance.post('/api/vrp/process', {
         "accommodation_id": "H0001",
         "intervals": {
           "breakfast": {"start": 6.0, "end": 7.5},
