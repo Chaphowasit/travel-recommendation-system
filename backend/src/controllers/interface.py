@@ -37,10 +37,4 @@ def fetch_place_detail(message: str, weaviate_adapter: Weaviate_Adapter, mariadb
     activity_response_json.sort(key=lambda x: x.get("score", 0), reverse=True)
     accommodation_response_json.sort(key=lambda x: x.get("score", 0), reverse=True)
 
-    # Determine response based on place type
-    # results = {
-    #     "activities": activity_response_json,
-    #     "accommodations": accommodation_response_json,
-    # }
-
     return activity_response_json, accommodation_response_json

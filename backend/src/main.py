@@ -7,10 +7,14 @@ from controllers.chatbot import Chatbot
 from controllers.interface import fetch_place_detail
 import logging
 from common.mariadb_schema import Base
+import logging
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config["APP_NAME"] = "Travel Recommendation System"
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Apply CORS
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -36,14 +40,6 @@ def root():
     logger.info("Root endpoint accessed")
     return jsonify({"service": app.config["APP_NAME"]})
 
-
-
-import logging
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-import os
 
 @app.route("/sendMessage", methods=["POST"])
 def send_message():
@@ -71,45 +67,6 @@ def send_message():
 
         logger.info("Recommendation intent detected")
         activity_response_json, accommodation_response_json = fetch_place_detail(message, weaviate_adapter, mariadb_adaptor)
-        # # Fetch and process activity recommendations
-        # activity_response_json = weaviate_adapter.remove_dup_and_get_id(
-        #     "Activity_Embedded",
-        #     "activity_name",
-        #     message,
-        #     "Activity_Bridge",
-        #     "activity_id"
-        # )
-
-        # # Fetch and process accommodation recommendations
-        # accommodation_response_json = weaviate_adapter.remove_dup_and_get_id(
-        #     "Accommodation_Embedded",
-        #     "accommodation_name",
-        #     message,
-        #     "Accommodation_Bridge",
-        #     "accommodation_id"
-        # )
-
-        # # Fetch business hours for activities
-        # activity_response_json = mariadb_adaptor.get_place_detail(activity_response_json)
-
-        # activity_response_json = [rename_field(item) for item in activity_response_json]
-
-        # # Fetch business hours for accommodations
-        # accommodation_response_json = mariadb_adaptor.get_place_detail(accommodation_response_json)
-
-        # accommodation_response_json = [
-        #     rename_field(item) for item in accommodation_response_json
-        # ]
-
-        # # Sort results by score
-        # activity_response_json.sort(key=lambda x: x.get("score", 0), reverse=True)
-        # accommodation_response_json.sort(key=lambda x: x.get("score", 0), reverse=True)
-
-        # # Determine response based on place type
-        # results = {
-        #     "activities": activity_response_json,
-        #     "accommodations": accommodation_response_json,
-        # }
 
         place_type = chatbot.classify_place_type(message)
         logger.info(f"{place_type} type detected for recommendation")
@@ -148,9 +105,6 @@ if __name__ == "__main__":
     # setup mariadb
     mariadb_adaptor = MariaDB_Adaptor()
     Base.metadata.create_all(mariadb_adaptor.get_engine())
-    # id = "A0201"
-    # act = mariadb_adaptor.select_activity_by_id(id)
-    # print(f"query with {id} got {act.name}")
     
     logger.info("Starting Flask application")
     app.run(debug=True)
