@@ -3,6 +3,7 @@ from weaviate.classes.init import Auth
 from weaviate.classes.query import Rerank, MetadataQuery
 from dotenv import load_dotenv
 import os
+from weaviate.classes.query import Filter
 
 class Weaviate_Adapter:
     def __init__(self):
@@ -30,3 +31,51 @@ class Weaviate_Adapter:
             return_metadata=MetadataQuery(score=True),
         )
         return response
+    
+    def remove_dup_and_get_id(
+        self, collection_name, property_name, message, bridge_name, id_property
+    ):
+        """
+        Helper function to fetch, process, and deduplicate recommendations.
+        """
+        collections = self.get_collections(collection_name)
+        response = self.hybrid_query(collections, 10, property_name, message)
+
+        print([obj.properties[property_name] for obj in response.objects])
+
+        seen = set()
+        response_json = [
+            {
+                **obj.properties,
+                "score": obj.metadata.rerank_score,
+            }
+            for obj in response.objects
+            if (
+                obj.properties[property_name],
+                obj.properties["latitude"],
+                obj.properties["longitude"],
+            )
+            not in seen
+            and not seen.add(
+                (
+                    obj.properties[property_name],
+                    obj.properties["latitude"],
+                    obj.properties["longitude"],
+                )
+            )
+        ]
+
+        bridge_collections = self.get_collections(bridge_name)
+        for entry in response_json:
+            bridge_response = bridge_collections.query.fetch_objects(
+                filters=(
+                    Filter.by_property(property_name).equal(entry.get(property_name))
+                    # & Filter.by_property("longitude").equal(entry.get("longitude"))
+                    # & Filter.by_property("latitude").equal(entry.get("latitude"))
+                ),
+                limit=1,
+            )
+            if bridge_response.objects:
+                entry["id"] = bridge_response.objects[0].properties.get(id_property)
+
+        return response_json

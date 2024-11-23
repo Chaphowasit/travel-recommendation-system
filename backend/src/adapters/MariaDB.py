@@ -44,9 +44,7 @@ class MariaDB_Adaptor:
         else:
             return None
 
-    def fetch_place_details(
-        session, place_ids: List[str]
-    ) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, int]]]:
+    def fetch_place_details(self, place_ids: List[str]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, int]]]:
         """
         Fetches latitude, longitude, and business hours for each place ID from Activity and Accommodation tables.
 
@@ -83,7 +81,7 @@ class MariaDB_Adaptor:
 
         # Fetch from Activity
         activities = (
-            session.query(
+            self.session.query(
                 Activity.id,
                 Activity.latitude,
                 Activity.longitude,
@@ -115,7 +113,7 @@ class MariaDB_Adaptor:
 
         if remaining_ids:
             accommodations = (
-                session.query(
+                self.session.query(
                     Accommodation.id,
                     Accommodation.latitude,
                     Accommodation.longitude,
@@ -149,3 +147,41 @@ class MariaDB_Adaptor:
         }
 
         return place_details, business_hours
+    
+    def get_place_detail(self, response_json: Dict) -> Dict[str, Dict[str, int]]:
+        """
+        Helper function to fetch business hours for recommendations.
+        Converts the `start_time` and `end_time` from the database into a custom format and adds it to the response_json.
+
+        :param response_json: JSON response containing information about activities or accommodations.
+        :return: A dictionary with the business hours for activities and accommodations.
+        """
+        # Initialize an empty dictionary to store business hours
+        business_hours = {}
+
+        # Extract place IDs from response_json
+        place_ids = [res.get("id") for res in response_json]
+
+        try:
+            # Use fetch_place_details to get place details, including business hours
+            place_detail, business_hours = self.fetch_place_details(place_ids)
+
+            for entry in response_json:
+                place_id = entry.get("id")
+                if place_id in business_hours:
+                    start_time_int, end_time_int = business_hours[place_id]
+                    entry["business_hours"] = {
+                        "start_time": start_time_int,
+                        "end_time": end_time_int,
+                    }
+                    # entry["tag"] = place_detail[place_id].get("tags", "ku")
+                    entry["image"] = place_detail[place_id].get(
+                        "image", "https://via.placeholder.com/150"
+                    )
+                    entry["tag"] = "bbb"
+
+        finally:
+            # Close the session
+            self.session.close()
+
+        return response_json  # Return the updated response_json with added business_hours

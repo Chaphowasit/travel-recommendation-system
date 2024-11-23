@@ -74,3 +74,16 @@ def convert_time_to_int(total_minutes: int, is_start: bool) -> int:
     transformed_int = max(0, min(transformed_int, 96))
 
     return transformed_int
+
+def rename_field(item):
+    return {
+        "id": item.get("id"),
+        "name": item.get("activity_name") or item.get("accommodation_name"),
+        "description": item.get("about_and_tags", "No description provided"),
+        "tag": item.get("tag"),
+        "business_hour": {
+            "start": item.get("business_hours", {}).get("start_time"),
+            "end": item.get("business_hours", {}).get("end_time"),
+        },
+        "image": item.get("image"),
+    }
