@@ -256,6 +256,7 @@ def update_matrix_and_prepare_new_durations(
             new_durations.append((source_id, destination_id, duration))
     return new_durations
 
+
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 from typing import List, Tuple

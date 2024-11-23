@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { Box, Paper, Typography } from '@mui/material';
+import { Box, Paper } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import ReactMarkdown from 'react-markdown'; // Import Markdown parser
+import remarkGfm from 'remark-gfm'; // For GitHub-flavored Markdown (optional)
 
 interface ChatWindowProps {
-  messages: { sender: string, text: string }[];
+  messages: { sender: string; text: string }[];
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
@@ -56,13 +58,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
             sx={{
               padding: 1,
               backgroundColor: message.sender === 'user' ? '#daf8da' : '#f1f1f1',
-              maxWidth: isSmallScreen ? '100%' : '60%',
+              maxWidth: isSmallScreen ? '100%' : '90%',
               width: 'auto',
               wordWrap: 'break-word',
               overflowWrap: 'break-word',
             }}
           >
-            <Typography variant="body1">{message.text}</Typography>
+            <ReactMarkdown
+              children={message.text} // Render Markdown content
+              remarkPlugins={[remarkGfm]} // Optional: GitHub-flavored Markdown
+            />
           </Paper>
         </Box>
       ))}
