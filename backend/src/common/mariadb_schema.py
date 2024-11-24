@@ -24,6 +24,7 @@ class Activity(Base):
     nearby_activity2 = Column(String(255))
     nearby_activity3 = Column(String(255))
     duration = Column(Integer)
+    image_url = Column(String)
 
 
 class Accommodation(Base):
@@ -43,6 +44,7 @@ class Accommodation(Base):
     nearby_activity1 = Column(String(255))
     nearby_activity2 = Column(String(255))
     nearby_activity3 = Column(String(255))
+    image_url = Column(String)
 
 
 class Duration(Base):

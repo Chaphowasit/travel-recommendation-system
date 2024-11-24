@@ -75,12 +75,13 @@ def convert_time_to_int(total_minutes: int, is_start: bool) -> int:
 
     return transformed_int
 
+
 def rename_field(item):
     return {
         "id": item.get("id"),
-        "name": item.get("activity_name") or item.get("accommodation_name"),
+        "name": item.get("name"),
         "description": item.get("about_and_tags", "No description provided"),
-        "tag": item.get("tag"),
+        "tag": "just make for frontend work",
         "business_hour": {
             "start": item.get("business_hours", {}).get("start_time"),
             "end": item.get("business_hours", {}).get("end_time"),

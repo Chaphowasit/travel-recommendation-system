@@ -2,23 +2,22 @@ from adapters.Weaviate import Weaviate_Adapter
 from adapters.MariaDB import MariaDB_Adaptor
 from common.utils import rename_field
 
-def fetch_place_detail(message: str, weaviate_adapter: Weaviate_Adapter, mariadb_adaptor : MariaDB_Adaptor):
+
+def fetch_place_detail(
+    message: str, weaviate_adapter: Weaviate_Adapter, mariadb_adaptor: MariaDB_Adaptor
+):
     # Fetch and process activity recommendations
     activity_response_json = weaviate_adapter.remove_dup_and_get_id(
-        "Activity_Embedded",
-        "activity_name",
-        message,
-        "Activity_Bridge",
-        "activity_id"
+        "Activity_Embedded", "name", message, "Activity_Bridge", "activity_id"
     )
 
     # Fetch and process accommodation recommendations
     accommodation_response_json = weaviate_adapter.remove_dup_and_get_id(
         "Accommodation_Embedded",
-        "accommodation_name",
+        "name",
         message,
         "Accommodation_Bridge",
-        "accommodation_id"
+        "accommodation_id",
     )
 
     # Fetch business hours for activities
@@ -27,7 +26,9 @@ def fetch_place_detail(message: str, weaviate_adapter: Weaviate_Adapter, mariadb
     activity_response_json = [rename_field(item) for item in activity_response_json]
 
     # Fetch business hours for accommodations
-    accommodation_response_json = mariadb_adaptor.get_place_detail(accommodation_response_json)
+    accommodation_response_json = mariadb_adaptor.get_place_detail(
+        accommodation_response_json
+    )
 
     accommodation_response_json = [
         rename_field(item) for item in accommodation_response_json

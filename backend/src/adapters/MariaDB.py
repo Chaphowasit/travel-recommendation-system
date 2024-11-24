@@ -44,7 +44,9 @@ class MariaDB_Adaptor:
         else:
             return None
 
-    def fetch_place_details(self, place_ids: List[str]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, int]]]:
+    def fetch_place_details(
+        self, place_ids: List[str]
+    ) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, int]]]:
         """
         Fetches latitude, longitude, and business hours for each place ID from Activity and Accommodation tables.
 
@@ -88,6 +90,7 @@ class MariaDB_Adaptor:
                 Activity.start_time,
                 Activity.end_time,
                 Activity.duration,
+                Activity.image_url,
             )
             .filter(Activity.id.in_(place_ids))
             .all()
@@ -102,6 +105,7 @@ class MariaDB_Adaptor:
                 "start_time_int": start_int or 0,
                 "end_time_int": end_int or 96,
                 "duration": activity.duration or 8,
+                "image_url": activity.image_url or "https://via.placeholder.com/150",
             }
             logger.debug(
                 f"Fetched Activity - ID: {activity.id}, Lat: {activity.latitude}, Lon: {activity.longitude}, Start Int: {start_int}, End Int: {end_int}"
@@ -119,6 +123,7 @@ class MariaDB_Adaptor:
                     Accommodation.longitude,
                     Accommodation.start_time,
                     Accommodation.end_time,
+                    Accommodation.image_url,
                 )
                 .filter(Accommodation.id.in_(remaining_ids))
                 .all()
@@ -128,6 +133,7 @@ class MariaDB_Adaptor:
                 place_details[acc.id] = {
                     "start_time_int": start_int or 0,
                     "end_time_int": end_int or 96,
+                    "image_url": acc.image_url or "https://via.placeholder.com/150",
                 }
                 logger.debug(
                     f"Fetched Accommodation - ID: {acc.id}, Lat: {acc.latitude}, Lon: {acc.longitude}, Start Int: {start_int}, End Int: {end_int}"
@@ -147,7 +153,7 @@ class MariaDB_Adaptor:
         }
 
         return place_details, business_hours
-    
+
     def get_place_detail(self, response_json: Dict) -> Dict[str, Dict[str, int]]:
         """
         Helper function to fetch business hours for recommendations.
@@ -174,14 +180,14 @@ class MariaDB_Adaptor:
                         "start_time": start_time_int,
                         "end_time": end_time_int,
                     }
-                    # entry["tag"] = place_detail[place_id].get("tags", "ku")
                     entry["image"] = place_detail[place_id].get(
-                        "image", "https://via.placeholder.com/150"
+                        "image_url", "https://via.placeholder.com/150"
                     )
-                    entry["tag"] = "bbb"
 
         finally:
             # Close the session
             self.session.close()
 
-        return response_json  # Return the updated response_json with added business_hours
+        return (
+            response_json  # Return the updated response_json with added business_hours
+        )
