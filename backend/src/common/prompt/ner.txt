@@ -1,0 +1,1 @@
+Use Named Entity Recognition (NER) to extract exactly three general entities from the provided description of a place in Phuket. Avoid specific names and focus on general categories or types of locations. Return the extracted entities as a comma-separated list of three tags (e.g., tag1, tag2, tag3).

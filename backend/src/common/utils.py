@@ -81,7 +81,7 @@ def rename_field(item):
         "id": item.get("id"),
         "name": item.get("name"),
         "description": item.get("about_and_tags", "No description provided"),
-        "tag": "just make for frontend work",
+        "tag": item.get("about_and_tags", "No description provided"),
         "business_hour": {
             "start": item.get("business_hours", {}).get("start_time"),
             "end": item.get("business_hours", {}).get("end_time"),

@@ -7,13 +7,14 @@ from dotenv import load_dotenv
 from common.utils import read_txt_files
 import os
 
+
 class Chatbot:
     def __init__(self):
         # Setup logging
         self.logger = logging.getLogger("Chatbot")
         self.logger.setLevel(logging.INFO)
         handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
@@ -36,28 +37,57 @@ class Chatbot:
         self.etc_answer_prompt_template = ChatPromptTemplate.from_messages(
             [("system", etc_answer_prompt), ("user", "{text}")]
         )
-        self.chain_answer_etc = self.etc_answer_prompt_template | self.model | self.parser
+        self.chain_answer_etc = (
+            self.etc_answer_prompt_template | self.model | self.parser
+        )
 
         # intent classify
-        intent_classify_prompt = read_txt_files("src\\common\\prompt\\intent_classify.txt")
+        intent_classify_prompt = read_txt_files(
+            "src\\common\\prompt\\intent_classify.txt"
+        )
         self.logger.debug(f"Intent Classify Prompt: {intent_classify_prompt}")
         self.intent_classify_prompt_template = ChatPromptTemplate.from_messages(
             [("system", intent_classify_prompt), ("user", "{text}")]
         )
-        self.chain_classify_intent = self.intent_classify_prompt_template | self.model | self.parser
+        self.chain_classify_intent = (
+            self.intent_classify_prompt_template | self.model | self.parser
+        )
 
         # intent place type
-        place_type_classify_prompt = read_txt_files("src\\common\\prompt\\place_type_classify.txt")
+        place_type_classify_prompt = read_txt_files(
+            "src\\common\\prompt\\place_type_classify.txt"
+        )
         self.logger.debug(f"Place Type Classify Prompt: {place_type_classify_prompt}")
         self.place_type_classify_prompt_template = ChatPromptTemplate.from_messages(
             [("system", place_type_classify_prompt), ("user", "{text}")]
         )
-        self.chain_classify_place_type = self.place_type_classify_prompt_template | self.model | self.parser
+        self.chain_classify_place_type = (
+            self.place_type_classify_prompt_template | self.model | self.parser
+        )
 
         # summarize
         summarize_prompt = read_txt_files("src\\common\\prompt\\summarize.txt")
         self.logger.debug(f"Summarize Prompt: {summarize_prompt}")
         self.summarize_prompt_template = PromptTemplate.from_template(summarize_prompt)
+
+        # summarize only description
+        summarize_description_prompt = read_txt_files(
+            "src\\common\\prompt\\summarize_description.txt"
+        )
+        self.logger.debug(
+            f"Summarize Description Prompt: {summarize_description_prompt}"
+        )
+        self.summarize_description_prompt_template = PromptTemplate.from_template(
+            summarize_description_prompt
+        )
+
+        # Name Entity Recognition
+        ner_prompt = read_txt_files("src\\common\\prompt\\ner.txt")
+        self.logger.debug(f"NER Prompt: {ner_prompt}")
+        self.ner_prompt_template = ChatPromptTemplate.from_messages(
+            [("system", ner_prompt), ("user", "{text}")]
+        )
+        self.chain_ner = self.ner_prompt_template | self.model | self.parser
 
         self.logger.info("Chatbot initialized successfully")
 
@@ -80,8 +110,12 @@ class Chatbot:
         return result
 
     def recommend_place(self, result, text):
-        self.logger.debug(f"Generating recommendation for result: {result} and user input: {text}")
-        full_text = self.summarize_prompt_template.format(result=result, user_input=text)
+        self.logger.debug(
+            f"Generating recommendation for result: {result} and user input: {text}"
+        )
+        full_text = self.summarize_prompt_template.format(
+            result=result, user_input=text
+        )
         response = self.model.invoke([HumanMessage(content=full_text)])
         self.logger.debug(f"Recommendation response: {response}")
         return response
@@ -96,3 +130,16 @@ class Chatbot:
         else:
             self.logger.info("Detected intent for 'etc' answer")
             return self.answer_etc(text)
+
+    def summarize_description(self, des):
+        self.logger.debug(f"Summarizing description for description: {des}")
+        result = self.summarize_description_prompt_template.format(des=des)
+        response = self.model.invoke([HumanMessage(content=result)])
+        self.logger.debug(f"Summarized description response: {response}")
+        return response
+
+    def name_entity_recognition(self, text):
+        self.logger.debug(f"Performing NER for text: {text}")
+        result = self.chain_ner.invoke({"text": text})
+        self.logger.debug(f"NER result: {result}")
+        return result

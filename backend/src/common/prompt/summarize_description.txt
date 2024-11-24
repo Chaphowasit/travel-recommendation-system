@@ -1,0 +1,1 @@
+Please provide a concise summary of the following description of a place in Phuket, Thailand: {des}

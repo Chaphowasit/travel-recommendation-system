@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 from weaviate.classes.query import Filter
 
+
 class Weaviate_Adapter:
     def __init__(self):
         load_dotenv()
@@ -18,11 +19,11 @@ class Weaviate_Adapter:
             cluster_url=url,
             auth_credentials=Auth.api_key(api_key),
             headers=headers,
-            )
-        
-    def get_collections(self, collection_name:str):
+        )
+
+    def get_collections(self, collection_name: str):
         return self.client.collections.get(collection_name)
-    
+
     def hybrid_query(self, collection, limit_num, prop_name, query):
         response = collection.query.hybrid(
             query=query,
@@ -31,7 +32,7 @@ class Weaviate_Adapter:
             return_metadata=MetadataQuery(score=True),
         )
         return response
-    
+
     def remove_dup_and_get_id(
         self, collection_name, property_name, message, bridge_name, id_property
     ):
@@ -39,8 +40,7 @@ class Weaviate_Adapter:
         Helper function to fetch, process, and deduplicate recommendations.
         """
         collections = self.get_collections(collection_name)
-        response = self.hybrid_query(collections, 10, property_name, message)
-
+        response = self.hybrid_query(collections, 10, "about_and_tags", message)
         print([obj.properties[property_name] for obj in response.objects])
 
         seen = set()

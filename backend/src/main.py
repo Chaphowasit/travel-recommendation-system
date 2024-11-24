@@ -1,4 +1,5 @@
 import logging
+from controllers.ventical_n_day.vrp import vehicle_routing_problem
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from adapters.Weaviate import Weaviate_Adapter
@@ -66,7 +67,17 @@ def send_message():
             return jsonify({"user_message": response})
 
         logger.info("Recommendation intent detected")
-        activity_response_json, accommodation_response_json = fetch_place_detail(message, weaviate_adapter, mariadb_adaptor)
+        activity_response_json, accommodation_response_json = fetch_place_detail(
+            message, weaviate_adapter, mariadb_adaptor
+        )
+
+        # Summarize the description
+        activity_response_json = summarize_description(activity_response_json)
+        accommodation_response_json = summarize_description(accommodation_response_json)
+
+        # NER for create tags
+        activity_response_json = NER(activity_response_json)
+        accommodation_response_json = NER(accommodation_response_json)
 
         place_type = chatbot.classify_place_type(message)
         logger.info(f"{place_type} type detected for recommendation")
@@ -96,6 +107,127 @@ def send_message():
         return jsonify({"error": "An error occurred"}), 500
 
 
+def summarize_description(response_json):
+    for item in response_json:
+        item["description"] = chatbot.summarize_description(
+            des=item["description"]
+        ).content
+    return response_json
+
+
+def NER(response_json):
+    for item in response_json:
+        item["tag"] = chatbot.name_entity_recognition(text=item["tag"])
+    return response_json
+
+
+# route for vrp
+@app.route("/vrp/generate-route", methods=["GET"])
+def vrp():
+    vrp_result = vehicle_routing_problem(
+        {
+            "accommodation": "H0021",
+            "activities": [
+                {
+                    "day": 1,
+                    "place": [
+                        {
+                            "linked_id": "1",
+                            "id": "A0423",
+                            "visit_time": [{"start": 40, "end": 48}],
+                            "must": True,
+                        },
+                        {
+                            "linked_id": "2",
+                            "id": "A0153",
+                            "visit_time": [{"start": 56, "end": 68}],
+                            "must": False,
+                        },
+                        {
+                            "linked_id": "3",
+                            "id": "A0155",
+                            "visit_time": [{"start": 56, "end": 68}],
+                            "must": True,
+                        },
+                        {
+                            "linked_id": "4",
+                            "id": "A0512",
+                            "visit_time": [{"start": 64, "end": 72}],
+                            "must": False,
+                        },
+                    ],
+                    "time_anchor": {"morning": 28, "evening": 72},
+                },
+                {
+                    "day": 2,
+                    "place": [
+                        {
+                            "linked_id": "1",
+                            "id": "A0527",
+                            "visit_time": [
+                                {"start": 30, "end": 34},
+                                {"start": 38, "end": 48},
+                            ],
+                            "must": True,
+                        },
+                        {
+                            "linked_id": "2",
+                            "id": "A0444",
+                            "visit_time": [{"start": 52, "end": 60}],
+                            "must": True,
+                        },
+                        {
+                            "linked_id": "3",
+                            "id": "A0002",
+                            "visit_time": [{"start": 60, "end": 64}],
+                            "must": True,
+                        },
+                        {
+                            "linked_id": "4",
+                            "id": "A0238",
+                            "visit_time": [{"start": 68, "end": 72}],
+                            "must": False,
+                        },
+                    ],
+                    "time_anchor": {"morning": 30, "evening": 72},
+                },
+                {
+                    "day": 3,
+                    "place": [
+                        {
+                            "linked_id": "1",
+                            "id": "A0055",
+                            "visit_time": [{"start": 40, "end": 48}],
+                            "must": True,
+                        },
+                        {
+                            "linked_id": "2",
+                            "id": "A0815",
+                            "visit_time": [{"start": 52, "end": 60}],
+                            "must": False,
+                        },
+                        {
+                            "linked_id": "3",
+                            "id": "A0809",
+                            "visit_time": [{"start": 68, "end": 72}],
+                            "must": True,
+                        },
+                        {
+                            "linked_id": "4",
+                            "id": "A0234",
+                            "visit_time": [{"start": 68, "end": 72}],
+                            "must": False,
+                        },
+                    ],
+                    "time_anchor": {"morning": 28, "evening": 72},
+                },
+            ],
+        }
+    )
+    print(vrp_result)
+    return jsonify(vrp_result)
+
+
 if __name__ == "__main__":
     # init chatbot
     chatbot = Chatbot()
@@ -105,6 +237,6 @@ if __name__ == "__main__":
     # setup mariadb
     mariadb_adaptor = MariaDB_Adaptor()
     Base.metadata.create_all(mariadb_adaptor.get_engine())
-    
+
     logger.info("Starting Flask application")
     app.run(debug=True)
