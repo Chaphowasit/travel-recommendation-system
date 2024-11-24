@@ -1,59 +1,52 @@
 import logging
-from controllers.ventical_n_day.vrp import vehicle_routing_problem
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from controllers.ventical_n_day.vrp import vehicle_routing_problem
 from adapters.Weaviate import Weaviate_Adapter
 from adapters.MariaDB import MariaDB_Adaptor
 from controllers.chatbot import Chatbot
 from controllers.interface import fetch_place_detail
-import logging
 from common.mariadb_schema import Base
-import logging
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config["APP_NAME"] = "Travel Recommendation System"
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Apply CORS
-CORS(app, resources={r"/*": {"origins": "*"}})
-
-# Set up logger
 logger = logging.getLogger(app.config["APP_NAME"])
-logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+# Apply CORS
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Register the Blueprint
+
+# Error handler
 @app.errorhandler(Exception)
 def universal_exception_handler(exc):
     logger.error(f"Exception occurred: {type(exc).__name__}: {exc}", exc_info=True)
     return jsonify({"error": f"{type(exc).__name__}: {exc}"}), 500
 
 
+# Root endpoint
 @app.route("/", methods=["GET"])
 def root():
     logger.info("Root endpoint accessed")
     return jsonify({"service": app.config["APP_NAME"]})
 
 
+# Send Message endpoint
 @app.route("/sendMessage", methods=["POST"])
 def send_message():
     logger.info("sendMessage endpoint accessed")
     try:
-        # Extract data from the request
-        data = request.json  # Assuming you're sending JSON data in the body
+        data = request.json
         if "message" not in data:
             logger.warning("No message provided in request")
-            return (
-                jsonify({"error": "No message provided"}),
-                400,
-            )  # Return error if message is missing
+            return jsonify({"error": "No message provided"}), 400
 
         message = data["message"]
         logger.debug(f"User message received: {message}")
@@ -89,15 +82,11 @@ def send_message():
                 accommodation_response_json, message
             ).content
 
-        # Prepare and return the result
         result = {
             "user_message": response,
             "accommodations": accommodation_response_json,
             "activities": activity_response_json,
         }
-
-        print("====" * 10)
-        print(result)
 
         logger.debug(f"Response generated: {result}")
         return jsonify(result)
@@ -107,6 +96,7 @@ def send_message():
         return jsonify({"error": "An error occurred"}), 500
 
 
+# Summarize descriptions in the response
 def summarize_description(response_json):
     for item in response_json:
         item["description"] = chatbot.summarize_description(
@@ -115,17 +105,24 @@ def summarize_description(response_json):
     return response_json
 
 
+# Named Entity Recognition (NER) for tagging
 def NER(response_json):
     for item in response_json:
         item["tag"] = chatbot.name_entity_recognition(text=item["tag"])
     return response_json
 
 
-# route for vrp
-@app.route("/vrp/generate-route", methods=["GET"])
-def vrp():
-    vrp_result = vehicle_routing_problem(
-        {
+# Vehicle Routing Problem (VRP) Route Generation
+@app.route('/vrp/generate-route', methods=['POST', 'OPTIONS'])
+def generate_route():
+    logger.info("VRP Generate Route endpoint accessed")
+    if request.method == 'OPTIONS':
+        logger.info("Handling OPTIONS preflight request")
+        return '', 204  # Preflight response for CORS
+
+    try:
+        # Sample hardcoded payload for testing
+        vrp_payload = {
             "accommodation": "H0021",
             "activities": [
                 {
@@ -223,18 +220,21 @@ def vrp():
                 },
             ],
         }
-    )
-    print(vrp_result)
-    return jsonify(vrp_result)
+
+        logger.debug(f"VRP payload: {vrp_payload}")
+        vrp_result = vehicle_routing_problem(vrp_payload)
+        logger.info(f"VRP Result: {vrp_result}")
+        return jsonify(vrp_result)
+
+    except Exception as e:
+        logger.error(f"Error in generate_route: {e}", exc_info=True)
+        return jsonify({"error": "An error occurred"}), 500
 
 
 if __name__ == "__main__":
-    # init chatbot
+    # Initialize dependencies
     chatbot = Chatbot()
-    # setup weaviate
     weaviate_adapter = Weaviate_Adapter()
-
-    # setup mariadb
     mariadb_adaptor = MariaDB_Adaptor()
     Base.metadata.create_all(mariadb_adaptor.get_engine())
 
