@@ -85,6 +85,8 @@ class MariaDB_Adaptor:
         activities = (
             self.session.query(
                 Activity.id,
+                Activity.name,
+                Activity.about_and_tags,
                 Activity.latitude,
                 Activity.longitude,
                 Activity.start_time,
@@ -100,6 +102,8 @@ class MariaDB_Adaptor:
                 activity.start_time, activity.end_time
             )
             place_details[activity.id] = {
+                "name": activity.name,
+                "about_and_tags": activity.about_and_tags,
                 "latitude": activity.latitude,
                 "longitude": activity.longitude,
                 "start_time_int": start_int or 0,
@@ -119,6 +123,8 @@ class MariaDB_Adaptor:
             accommodations = (
                 self.session.query(
                     Accommodation.id,
+                    Accommodation.name,
+                    Accommodation.about_and_tags,
                     Accommodation.latitude,
                     Accommodation.longitude,
                     Accommodation.start_time,
@@ -131,6 +137,10 @@ class MariaDB_Adaptor:
             for acc in accommodations:
                 start_int, end_int = transform_time_to_int(acc.start_time, acc.end_time)
                 place_details[acc.id] = {
+                    "name": acc.name,
+                    "about_and_tags": acc.about_and_tags,
+                    "latitude": acc.latitude,
+                    "longitude": acc.longitude,
                     "start_time_int": start_int or 0,
                     "end_time_int": end_int or 96,
                     "image_url": acc.image_url or "https://via.placeholder.com/150",
