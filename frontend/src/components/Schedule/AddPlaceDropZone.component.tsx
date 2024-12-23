@@ -14,7 +14,7 @@ const AddPlaceDropZone: React.FC<AddPlaceDropZoneProps> = ({
   onAddPlace,
 }) => {
   const [{ isOver }, drop] = useDrop({
-    accept: "ACCOMMODATION_CARD",
+    accept: ["ACCOMMODATION_CARD", "ACTIVITY_CARD"],
     drop: onDrop,
     collect: (monitor) => ({
       isOver: monitor.isOver(),

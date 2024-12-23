@@ -214,12 +214,6 @@ const PlanningSection: React.FC<PlanningSectionProps> = ({
                 overflow="auto"
                 sx={{ backgroundColor: "#f5f5f5", height: "calc(100% - 64px)", borderRadius: "12px" }}
             >
-                {/* Debugging Section */}
-                <Box sx={{ backgroundColor: "green", mb: 2, p: 2, color: "white" }}>
-                    <Typography variant="body2">
-                        {JSON.stringify(planningData, null, 4)}
-                    </Typography>
-                </Box>
 
                 {/* Accommodation Selection Section */}
                 <Box

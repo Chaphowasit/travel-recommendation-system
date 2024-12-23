@@ -1,0 +1,112 @@
+{
+    "routes": [
+        [
+            {
+                "node": "H0021",
+                "index": 0,
+                "arrival_time": 0,
+                "departure_time": 28,
+                "waiting_time": 0,
+                "travel_time": 0
+            },
+            {
+                "node": "A0423",
+                "index": 9,
+                "arrival_time": 40,
+                "departure_time": 48,
+                "waiting_time": 11,
+                "travel_time": 1
+            },
+            {
+                "node": "A0155",
+                "index": 6,
+                "arrival_time": 56,
+                "departure_time": 58,
+                "waiting_time": 5,
+                "travel_time": 3
+            },
+            {
+                "node": "A0512",
+                "index": 11,
+                "arrival_time": 64,
+                "departure_time": 72,
+                "waiting_time": 5,
+                "travel_time": 1
+            },
+            {
+                "node": "H0021",
+                "index": 1,
+                "arrival_time": 74,
+                "departure_time": 128,
+                "waiting_time": 0,
+                "travel_time": 2
+            },
+            {
+                "node": "A0527",
+                "index": 12,
+                "arrival_time": 136,
+                "departure_time": 144,
+                "waiting_time": 7,
+                "travel_time": 1
+            },
+            {
+                "node": "A0444",
+                "index": 10,
+                "arrival_time": 148,
+                "departure_time": 149,
+                "waiting_time": 3,
+                "travel_time": 1
+            },
+            {
+                "node": "A0002",
+                "index": 3,
+                "arrival_time": 156,
+                "departure_time": 159,
+                "waiting_time": 5,
+                "travel_time": 2
+            },
+            {
+                "node": "A0238",
+                "index": 8,
+                "arrival_time": 164,
+                "departure_time": 165,
+                "waiting_time": 3,
+                "travel_time": 2
+            },
+            {
+                "node": "H0021",
+                "index": 2,
+                "arrival_time": 168,
+                "departure_time": 220,
+                "waiting_time": 1,
+                "travel_time": 2
+            },
+            {
+                "node": "A0055",
+                "index": 4,
+                "arrival_time": 232,
+                "departure_time": 233,
+                "waiting_time": 11,
+                "travel_time": 1
+            },
+            {
+                "node": "A0234",
+                "index": 7,
+                "arrival_time": 260,
+                "departure_time": 263,
+                "waiting_time": 24,
+                "travel_time": 3
+            },
+            {
+                "node": "H0021",
+                "index": 0,
+                "arrival_time": 266,
+                "departure_time": 266,
+                "waiting_time": 0,
+                "travel_time": 0
+            }
+        ]
+    ],
+    "total_time": 266,
+    "total_waiting_time": 75
+}

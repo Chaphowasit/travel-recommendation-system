@@ -194,9 +194,8 @@ class MariaDB_Adaptor:
                         "image_url", "https://via.placeholder.com/150"
                     )
 
-        finally:
-            # Close the session
-            self.session.close()
+        except Exception as e:
+            logger.error(f"Error fetching place details: {e}")
 
         return (
             response_json  # Return the updated response_json with added business_hours
