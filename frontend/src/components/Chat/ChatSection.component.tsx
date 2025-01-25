@@ -2,7 +2,7 @@ import { Box } from "@mui/material";
 import ChatWindow from "./ChatWindow.component";
 import InputBox from "./InputBox.component";
 import { useState, useCallback } from "react";
-import { sendMessage } from "../../../api";
+import { sendMessage } from "../../api";
 
 interface BusinessHour {
     start: number; // 0-96 format

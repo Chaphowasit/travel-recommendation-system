@@ -19,14 +19,14 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { useDrag } from "react-dnd";
 
-const ItemType = "ACCOMMODATION_CARD";
+const ItemType = "ACTIVITY_CARD";
 
 interface BusinessHour {
   start: number;
   end: number;
 }
 
-interface DroppedAccommodationCardProps {
+interface DroppedActivityCardProps {
   id: string;
   name: string;
   description: string;
@@ -34,9 +34,10 @@ interface DroppedAccommodationCardProps {
   business_hour: BusinessHour;
   image: string;
   onRemove: (id: string) => void;
+  onUpdate: (updatedBusinessHour: BusinessHour) => void; // New prop for updating time
 }
 
-const DroppedAccommodationCard: React.FC<DroppedAccommodationCardProps> = ({
+const DroppedActivityCard: React.FC<DroppedActivityCardProps> = ({
   id,
   name,
   description,
@@ -44,20 +45,14 @@ const DroppedAccommodationCard: React.FC<DroppedAccommodationCardProps> = ({
   business_hour,
   image,
   onRemove,
+  onUpdate,
 }) => {
   const [open, setOpen] = useState(false);
   const [startHour, setStartHour] = useState<number>(business_hour.start);
   const [endHour, setEndHour] = useState<number>(business_hour.end);
+  const [stayTime, setStayTime] = useState<number>(0.5);
   const [startError, setStartError] = useState<string>("");
   const [endError, setEndError] = useState<string>("");
-
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: ItemType,
-    item: { id, name, description, tag, business_hour, image },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  }));
 
   const formatTime = (value: number) => {
     const totalMinutes = value * 15;
@@ -82,18 +77,6 @@ const DroppedAccommodationCard: React.FC<DroppedAccommodationCardProps> = ({
     (option) => option.value >= startHour + 4
   );
 
-  const handleClickOpen = () => {
-    setOpen(true);
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-    setStartError("");
-    setEndError("");
-    setStartHour(business_hour.start);
-    setEndHour(business_hour.end);
-  };
-
   const handleSave = () => {
     let valid = true;
 
@@ -112,8 +95,25 @@ const DroppedAccommodationCard: React.FC<DroppedAccommodationCardProps> = ({
     }
 
     if (valid) {
-      handleClose();
+      // Persist the updated hours
+      onUpdate({ start: startHour, end: endHour });
+
+      // Use a small timeout to ensure parent state syncs before closing
+      setTimeout(() => {
+        handleClose();
+      }, 0);
     }
+  };
+
+
+
+
+  const handleClose = () => {
+    setOpen(false);
+    setStartError("");
+    setEndError("");
+    setStartHour(startHour);
+    setEndHour(endHour);
   };
 
   useEffect(() => {
@@ -121,6 +121,14 @@ const DroppedAccommodationCard: React.FC<DroppedAccommodationCardProps> = ({
       setEndHour(startHour + 4);
     }
   }, [startHour]);
+
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: ItemType,
+    item: { id, name, description, tag, business_hour, image },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  }));
 
   const cardStyle = {
     opacity: isDragging ? 0.5 : 1,
@@ -131,7 +139,19 @@ const DroppedAccommodationCard: React.FC<DroppedAccommodationCardProps> = ({
     width: "250px",
     display: "flex",
     alignItems: "center",
+    flexDirection: "row", // Align content horizontally
+    minWidth: "250px", // Ensure a minimum width
   };
+
+  const handleClickOpen = () => {
+    setOpen(true);
+  };
+
+  const handleStayTimeChange = (value: number) => {
+    setStayTime(value); // Update the stay time state
+  };
+
+
 
   return (
     <>
@@ -215,13 +235,25 @@ const DroppedAccommodationCard: React.FC<DroppedAccommodationCardProps> = ({
               <Typography variant="body2" sx={{ color: "gray" }}>
                 Tag: {tag}
               </Typography>
+              <Typography variant="body2" sx={{ color: "gray" }}>
+                Business Hours: {`${formatTime(business_hour.start)} - ${formatTime(business_hour.end)}`}
+              </Typography>
             </Box>
           </Box>
 
           <Divider sx={{ margin: "20px 0" }} />
 
           <Typography variant="body1">Preferred Visit Hours</Typography>
-          <Box sx={{ display: "flex", gap: "15px", marginTop: "10px" }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: "15px",
+              alignItems: "center",
+              marginTop: "10px",
+            }}
+          >
+
+            {/* Start Time Select */}
             <FormControl sx={{ width: "150px" }} error={!!startError}>
               <InputLabel id="start-time-label">Start Time</InputLabel>
               <Select
@@ -238,6 +270,8 @@ const DroppedAccommodationCard: React.FC<DroppedAccommodationCardProps> = ({
               </Select>
               <FormHelperText>{startError}</FormHelperText>
             </FormControl>
+
+            {/* End Time Select */}
             <FormControl sx={{ width: "150px" }} error={!!endError}>
               <InputLabel id="end-time-label">End Time</InputLabel>
               <Select
@@ -254,7 +288,37 @@ const DroppedAccommodationCard: React.FC<DroppedAccommodationCardProps> = ({
               </Select>
               <FormHelperText>{endError}</FormHelperText>
             </FormControl>
+
+            {/* Vertical Divider */}
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{
+                backgroundColor: "#ccc",
+                height: "60px",
+              }}
+            />
+
+            {/* Preferred Stay Time */}
+            <FormControl sx={{ width: "150px" }}>
+              <InputLabel id="stay-time-label">Stay Time</InputLabel>
+              <Select
+                labelId="stay-time-label"
+                value={stayTime} // Default value
+                label="Stay Time"
+                onChange={(e) => {handleStayTimeChange(Number(e.target.value))}}
+              >
+                {Array.from({ length: 16 }, (_, i) => (i + 1) / 2).map((hours) => (
+                  <MenuItem key={hours} value={hours}>
+                    {hours} Hour{hours > 1 ? "s" : ""}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+
           </Box>
+
 
           <Divider sx={{ margin: "20px 0" }} />
 
@@ -274,4 +338,4 @@ const DroppedAccommodationCard: React.FC<DroppedAccommodationCardProps> = ({
   );
 };
 
-export default DroppedAccommodationCard;
+export default DroppedActivityCard;
