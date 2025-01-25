@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 interface PreferenceViewProps {
-    onDateChange: (startDate: Date | undefined, endDate: Date | undefined) => void;
+    onDateChange: (startDate: Date , endDate: Date ) => void;
 }
 
 const PreferenceView: React.FC<PreferenceViewProps> = ({ onDateChange }) => {
@@ -23,7 +23,18 @@ const PreferenceView: React.FC<PreferenceViewProps> = ({ onDateChange }) => {
     const handleSelect = (ranges: RangeKeyDict) => {
         const selectionRange: Range = ranges.selection;
         setState([selectionRange]);
-        onDateChange(selectionRange.startDate, selectionRange.endDate);
+    
+        // Adjust the dates by adding 7 hours for the timezone
+        const adjustedStartDate = selectionRange.startDate
+            ? new Date(selectionRange.startDate.getTime() + 7 * 60 * 60 * 1000)
+            : new Date();
+    
+        const adjustedEndDate = selectionRange.endDate
+            ? new Date(selectionRange.endDate.getTime() + 7 * 60 * 60 * 1000)
+            : new Date();
+    
+        // Call the onDateChange callback with the adjusted dates
+        onDateChange(adjustedStartDate, adjustedEndDate);
     };
 
     return (
@@ -60,7 +71,6 @@ const PreferenceView: React.FC<PreferenceViewProps> = ({ onDateChange }) => {
                         Submit
                     </Button>
                 </Box>
-
 
             </Box>
         </Box>

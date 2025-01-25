@@ -129,25 +129,21 @@ def generate_route():
                     "day": 1,
                     "place": [
                         {
-                            "linked_id": "1",
                             "id": "A0423",
                             "visit_time": [{"start": 40, "end": 48}],
                             "must": True,
                         },
                         {
-                            "linked_id": "2",
                             "id": "A0153",
                             "visit_time": [{"start": 56, "end": 68}],
                             "must": False,
                         },
                         {
-                            "linked_id": "3",
                             "id": "A0155",
                             "visit_time": [{"start": 56, "end": 68}],
                             "must": True,
                         },
                         {
-                            "linked_id": "4",
                             "id": "A0512",
                             "visit_time": [{"start": 64, "end": 72}],
                             "must": False,
@@ -159,7 +155,6 @@ def generate_route():
                     "day": 2,
                     "place": [
                         {
-                            "linked_id": "1",
                             "id": "A0527",
                             "visit_time": [
                                 {"start": 30, "end": 34},
@@ -168,21 +163,25 @@ def generate_route():
                             "must": True,
                         },
                         {
-                            "linked_id": "2",
                             "id": "A0444",
-                            "visit_time": [{"start": 52, "end": 60}],
+                            "visit_time": [
+                                {"start": 52, "end": 60}, 
+                                {"start": 72, "end": 84}
+                            ],
                             "must": True,
                         },
                         {
-                            "linked_id": "3",
                             "id": "A0002",
-                            "visit_time": [{"start": 60, "end": 64}],
+                            "visit_time": [
+                                {"start": 60, "end": 64}
+                            ],
                             "must": True,
                         },
                         {
-                            "linked_id": "4",
                             "id": "A0238",
-                            "visit_time": [{"start": 68, "end": 72}],
+                            "visit_time": [
+                                {"start": 68, "end": 72}
+                            ],
                             "must": False,
                         },
                     ],
@@ -192,25 +191,21 @@ def generate_route():
                     "day": 3,
                     "place": [
                         {
-                            "linked_id": "1",
                             "id": "A0055",
                             "visit_time": [{"start": 40, "end": 48}],
                             "must": True,
                         },
                         {
-                            "linked_id": "2",
                             "id": "A0815",
                             "visit_time": [{"start": 52, "end": 60}],
                             "must": False,
                         },
                         {
-                            "linked_id": "3",
                             "id": "A0809",
                             "visit_time": [{"start": 68, "end": 72}],
                             "must": True,
                         },
                         {
-                            "linked_id": "4",
                             "id": "A0234",
                             "visit_time": [{"start": 68, "end": 72}],
                             "must": False,
@@ -237,7 +232,7 @@ def fetch_mariadb():
     try:
         # Get the 'place_ids' parameter from the query string
         place_ids = request.args.get("place_ids")
-
+        
         # Ensure place_ids is provided
         if not place_ids:
             return jsonify({"error": "place_ids parameter is required"}), 400
@@ -274,6 +269,7 @@ def fetch_mariadb():
             result.append(entry)
 
         # Return the transformed data as a JSON array
+        print(result)
         return jsonify(result)
 
     except Exception as e:
