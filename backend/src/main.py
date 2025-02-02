@@ -64,14 +64,6 @@ def send_message():
             message, weaviate_adapter, mariadb_adaptor
         )
 
-        # Summarize the description
-        activity_response_json = summarize_description(activity_response_json)
-        accommodation_response_json = summarize_description(accommodation_response_json)
-
-        # NER for create tags
-        activity_response_json = NER(activity_response_json)
-        accommodation_response_json = NER(accommodation_response_json)
-
         place_type = chatbot.classify_place_type(message)
         logger.info(f"{place_type} type detected for recommendation")
 
@@ -94,22 +86,6 @@ def send_message():
     except Exception as e:
         logger.error(f"Error in sendMessage: {e}", exc_info=True)
         return jsonify({"error": "An error occurred"}), 500
-
-
-# Summarize descriptions in the response
-def summarize_description(response_json):
-    for item in response_json:
-        item["description"] = chatbot.summarize_description(
-            des=item["description"]
-        ).content
-    return response_json
-
-
-# Named Entity Recognition (NER) for tagging
-def NER(response_json):
-    for item in response_json:
-        item["tag"] = chatbot.name_entity_recognition(text=item["tag"])
-    return response_json
 
 
 # Vehicle Routing Problem (VRP) Route Generation

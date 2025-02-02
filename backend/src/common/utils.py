@@ -1,6 +1,6 @@
 import ast
 import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 def create_list_notNone(*elements):
@@ -75,16 +75,44 @@ def convert_time_to_int(total_minutes: int, is_start: bool) -> int:
 
     return transformed_int
 
+def transform_time_to_int(start_time, end_time):
+    """Convert start_time and end_time to integer representations, handling overnight times."""
+    start_total_minutes = (
+        start_time.hour * 60 + start_time.minute if start_time else None
+    )
+    end_total_minutes = (
+        end_time.hour * 60 + end_time.minute if end_time else None
+    )
 
-def rename_field(item):
-    return {
-        "id": item.get("id"),
+    # Handle overnight times
+    if (
+        end_total_minutes is not None
+        and start_total_minutes is not None
+        and end_total_minutes <= start_total_minutes
+    ):
+        end_total_minutes += (
+            24 * 60
+        )  # Add 24 hours to end time if it’s past midnight
+
+    start_int = convert_time_to_int(start_total_minutes, is_start=True)
+    end_int = convert_time_to_int(end_total_minutes, is_start=False)
+    return start_int, end_int
+
+
+def rename_field(place_id: str, item: Dict) -> Dict:
+    result = {
+        "id": place_id,
         "name": item.get("name"),
-        "description": item.get("about_and_tags", "No description provided"),
+        "description": item.get("description", "No description provided"),
         "tag": item.get("about_and_tags", "No description provided"),
         "business_hour": {
-            "start": item.get("business_hours", {}).get("start_time"),
-            "end": item.get("business_hours", {}).get("end_time"),
+            "start": item.get("start_time_int", 0),
+            "end": item.get("end_time_int", 96),
         },
-        "image": item.get("image"),
+        "image": item.get("image_url"),
     }
+    
+    if "duration" in item.keys():
+        result["duration"] = item.get("duration")
+        
+    return result

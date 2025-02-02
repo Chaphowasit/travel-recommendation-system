@@ -12,6 +12,7 @@ class Activity(Base):
     id = Column(String(255), primary_key=True)
     name = Column(String(255))
     about_and_tags = Column(String)
+    description = Column(String)
     latitude = Column(Float)
     longitude = Column(Float)
     start_time = Column(SQLAlchemyTime)  # SQLAlchemy Time datatype
@@ -33,6 +34,7 @@ class Accommodation(Base):
     id = Column(String(255), primary_key=True)
     name = Column(String(255))
     about_and_tags = Column(String)
+    description = Column(String)
     latitude = Column(Float)
     longitude = Column(Float)
     start_time = Column(SQLAlchemyTime)  # SQLAlchemy Time datatype

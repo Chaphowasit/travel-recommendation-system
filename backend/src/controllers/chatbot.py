@@ -136,7 +136,7 @@ class Chatbot:
         result = self.summarize_description_prompt_template.format(des=des)
         response = self.model.invoke([HumanMessage(content=result)])
         self.logger.debug(f"Summarized description response: {response}")
-        return response
+        return response.content
 
     def name_entity_recognition(self, text):
         self.logger.debug(f"Performing NER for text: {text}")

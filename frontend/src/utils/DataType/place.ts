@@ -18,5 +18,6 @@ export interface Activity {
     description: string;
     tag: string;
     business_hour: BusinessHour;
+    duration: number,
     image: string;
 }
