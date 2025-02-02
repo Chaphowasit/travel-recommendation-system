@@ -27,10 +27,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Environment Variables
-DATABASE_URI = os.getenv(
-    "DATABASE_URI", "mariadb+pymysql://root:biggy1234@52.65.252.12:3306/travelRecommendation"
-)
-MAPBOX_ACCESS_TOKEN = os.getenv("MAPBOX_API_KEY", "pk.eyJ1IjoiYmlncm9jazQ1MjIiLCJhIjoiY20ycjlkZDR3MTVvbTJrczl3MjU5amdoeCJ9.a4pE-ACRSuW-8zNeefeHw")
+DATABASE_URI = os.getenv("MARIADB_URI")
+MAPBOX_ACCESS_TOKEN = os.getenv("MAPBOX_API_KEY")
 MAPBOX_MATRIX_URL = "https://api.mapbox.com/directions-matrix/v1/mapbox/driving/"
 
 # SQLAlchemy Base

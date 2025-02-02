@@ -11,14 +11,12 @@ class Weaviate_Adapter:
         load_dotenv()
         gpt_key = os.getenv("OPENAI_APIKEY")
         cohere_key = os.getenv("COHERE_KEY")
-        url = os.getenv("WEAVIATE_URL")
-        api_key = os.getenv("WEAVIATE_API_KEY")
+        url = os.getenv("WEAVIATE_HOST")
 
         headers = {"X-OpenAI-Api-Key": gpt_key, "X-Cohere-Api-Key": cohere_key}
-        self.client = weaviate.connect_to_weaviate_cloud(
-            cluster_url=url,
-            auth_credentials=Auth.api_key(api_key),
-            headers=headers,
+        self.client = weaviate.connect_to_local(
+            host=url,
+            headers=headers
         )
 
     def get_collections(self, collection_name: str):

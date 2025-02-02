@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class MariaDB_Adaptor:
     def __init__(self):
         # Initialize the database connection using an environment variable
-        self.engine = sqlalchemy.create_engine(os.getenv("DATABASE_URI"))
+        self.engine = sqlalchemy.create_engine(os.getenv("MARIADB_URI"))
 
         # Create a session
         Session = sessionmaker(bind=self.engine)

@@ -23,10 +23,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Environment Variables
-DATABASE_URI = os.getenv(
-    "DATABASE_URI",
-    "mariadb+pymysql://root:biggy1234@52.65.252.12:3306/travelRecommendation",
-)
+DATABASE_URI = os.getenv("MARIADB_URI")
 
 # SQLAlchemy Base
 Base = declarative_base()
