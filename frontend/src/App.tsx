@@ -11,28 +11,37 @@ const App: React.FC = () => {
         startDate: new Date((new Date()).getTime() + 7 * 60 * 60 * 1000),
         endDate: new Date((new Date()).getTime() + 7 * 60 * 60 * 1000),
     });
-    
+
+    const [isSelectedDates, setIsSelectedDates] = useState<boolean>(false)
+
     const handleDateChange = (startDate: Date, endDate: Date) => {
         setSelectedDates({
             startDate: startDate,
             endDate: endDate,
         });
     };
-    
+
 
     return (
         <DndProvider backend={HTML5Backend}>
             <Router>
-            <CssBaseline />
-            <Box sx={{ height: '100vh', backgroundColor: '#f0f0f0', width: '100vw', display: 'flex' }}>
-                <Routes>
-                    <Route path="/" element={<Navigate to="/preference" />} />
-                    <Route path="/preference" element={<PreferenceView onDateChange={handleDateChange} />} />
-                    <Route path="/planner" element={<PlannerView selectedDates={selectedDates} setSelectedDates={handleDateChange}/>} />
-                    <Route path="*" element={<Navigate to="/" />} />
-                </Routes>
-            </Box>
-        </Router>
+                <CssBaseline />
+                <Box sx={{ height: '100vh', backgroundColor: '#f0f0f0', width: '100vw', display: 'flex' }}>
+                    <Routes>
+                        <Route path="/" element={<Navigate to="/preference" />} />
+                        <Route path="/preference" element={
+                            <PreferenceView
+                                setIsSelectedDate={setIsSelectedDates}
+                                onDateChange={handleDateChange} />} />
+                        <Route path="/planner" element={
+                            <PlannerView 
+                                isSelectedDates={isSelectedDates}
+                                selectedDates={selectedDates} 
+                                setSelectedDates={handleDateChange} />} />
+                        <Route path="*" element={<Navigate to="/" />} />
+                    </Routes>
+                </Box>
+            </Router>
         </DndProvider>
     );
 };

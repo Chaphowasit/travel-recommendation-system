@@ -3,7 +3,7 @@ import { Box, Typography } from "@mui/material";
 import ScheduleTable from "./ScheduleTable.component";
 import EditPlaceModal from "./EditPlaceModal.component";
 import AddPlaceDropZone from "./AddPlaceDropZone.component";
-import { fetchMariaDB } from "../../api";
+import { fetchMariaDB } from "../../utils/api";
 
 // Generate 15-minute intervals
 const timeSlots = Array.from({ length: 24 * 4 }, (_, i) => {

@@ -2,31 +2,8 @@ import { Box } from "@mui/material";
 import ChatWindow from "./ChatWindow.component";
 import InputBox from "./InputBox.component";
 import { useState, useCallback } from "react";
-import { sendMessage } from "../../api";
-
-interface BusinessHour {
-    start: number; // 0-96 format
-    end: number; // 0-96 format
-}
-  
-interface Accommodation {
-    id: string;
-    name: string;
-    description: string;
-    tag: string;
-    business_hour: BusinessHour;
-    image: string;
-}
-
-interface Activity {
-    id: string;
-    name: string;
-    description: string;
-    tag: string;
-    business_hour: BusinessHour;
-    image: string;
-}
-  
+import { sendMessage } from "../../utils/api";
+import { Accommodation, Activity } from "../../utils/DataType/place";
 
 interface Message {
     sender: string;

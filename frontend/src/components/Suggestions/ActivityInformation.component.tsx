@@ -9,45 +9,24 @@ import {
   Button,
   FormControl,
   InputLabel,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import React, { useEffect, useState } from "react";
+import { Activity } from "../../utils/DataType/place";
+import { ActivityShoppingCartItem } from "../../utils/DataType/shoppingCart";
+import { dayjsStartDate } from "../../utils/time";
 
-interface BusinessHour {
-  start: number; // 0-96 format
-  end: number; // 0-96 format
-}
-
-interface Accommodation {
-  id: string;
-  name: string;
-  description: string;
-  tag: string;
-  business_hour: BusinessHour;
-  image: string;
-}
-
-interface Activity {
-  id: string;
-  name: string;
-  description: string;
-  tag: string;
-  business_hour: BusinessHour;
-  image: string;
-}
-
-interface ShoppingCartItem {
-  item: Accommodation | Activity; // Reference to the item (Accommodation or Activity)
-  zones: { date: string; startTime: string; endTime: string; stayTime: string }[]; // List of time zones
-}
-
-interface InformationSectionProps {
-  data: Accommodation | Activity;
+interface ActivityInformationProps {
+  data: Activity;
   selectedDates: { startDate: Date | null; endDate: Date | null };
-  shoppingCartItem: ShoppingCartItem[]; // Initial shopping cart data
-  setShoppingCartItem: (items: ShoppingCartItem[]) => void; // Function to update the shopping cart
+  shoppingCartItem: ActivityShoppingCartItem[]; // Initial shopping cart data
+  setShoppingCartItem: (items: ActivityShoppingCartItem[]) => void; // Function to update the shopping cart
+  switchPanel: (panel: "cart" | "shopping") => void
 }
 
 const formatTime = (value: number) => {
@@ -58,26 +37,32 @@ const formatTime = (value: number) => {
 
 const generateDateRange = (startDate: Date, endDate: Date) => {
   const dates: string[] = [];
-  let currentDate = new Date(startDate);
+  let currentDate = dayjsStartDate(startDate);
 
-  while (currentDate <= endDate) {
-    dates.push(currentDate.toISOString().split("T")[0]);
-    currentDate.setDate(currentDate.getDate() + 1);
+  while (currentDate.isBefore(dayjsStartDate(endDate)) || currentDate.isSame(endDate, "day")) {
+    dates.push(currentDate.format("YYYY-MM-DD")); // Fix: Display date-only without timezone shift
+    currentDate = currentDate.add(1, "day");
   }
 
   return dates;
 };
 
-const InformationSection: React.FC<InformationSectionProps> = ({
+
+const ActivityInformation: React.FC<ActivityInformationProps> = ({
   data,
   selectedDates,
   shoppingCartItem,
   setShoppingCartItem,
+  switchPanel,
 }) => {
-  const [zones, setZones] = useState<{ date: string; startTime: string; endTime: string; stayTime: string }[]>([
-    { date: "", startTime: "", endTime: "", stayTime: "" },
+  const [zones, setZones] = useState<{ date: Date; startTime: number; endTime: number; stayTime: number }[]>([
+    { date: dayjsStartDate().toDate(), startTime: data.business_hour.start, endTime: data.business_hour.end, stayTime: 2 },
   ]);
   const [cartDialogOpen, setCartDialogOpen] = useState(false);
+  const handleClose = (action: "cart" | "shopping") => {
+      switchPanel(action)
+      setCartDialogOpen(false); // Close the dialog
+  };
 
   const timeOptions = Array.from({ length: 97 }, (_, i) => ({
     value: i,
@@ -105,12 +90,57 @@ const InformationSection: React.FC<InformationSectionProps> = ({
     }
   }, [shoppingCartItem, data.id]);
 
+  const [errorMessage, setErrorMessage] = useState<string>(""); // State to store error message
+
   const handleAddToCartClick = () => {
+    // Validate that all dropdowns are filled before adding to the cart
+    const allFieldsFilled = zones.every(
+      (zone) => zone.date && zone.startTime && zone.endTime && zone.stayTime
+    );
+
+    if (!allFieldsFilled) {
+      setErrorMessage("Please fill out all fields before saving."); // Set error message
+      return;
+    }
+
+    setErrorMessage(""); // Clear error message if validation passes
+
     // Update or add the current item in the shopping cart
     const updatedCart = shoppingCartItem.filter((cartItem) => cartItem.item.id !== data.id);
     updatedCart.push({ item: data, zones });
     setShoppingCartItem(updatedCart); // Update the cart with the new data
     setCartDialogOpen(true);
+  };
+  // Update zone with auto-sorting
+  const updateZone = (index: number, field: "date" | "startTime" | "endTime" | "stayTime", value: string) => {
+    const newZones = [...zones];
+    const currentZone = newZones[index];
+
+    if (field === "startTime") {
+      const startValue = parseInt(value, 10);
+      const endValue = currentZone.endTime || 96;
+
+      if (startValue >= endValue - 2) {
+        currentZone.endTime = startValue + 2;
+      }
+
+      currentZone.startTime = startValue;
+    } else if (field === "endTime") {
+      const endValue = parseInt(value, 10);
+      const startValue = currentZone.startTime || 0;
+
+      if (endValue <= startValue + 2) {
+        currentZone.startTime = endValue - 2;
+      }
+
+      currentZone.endTime = endValue;
+    } else if (field === "date") {
+      currentZone.date = dayjsStartDate(value).toDate();
+    } else {
+      currentZone[field] = parseInt(value, 10);
+    }
+
+    setZones(newZones);
   };
 
   const handleCartDialogClose = () => {
@@ -118,40 +148,11 @@ const InformationSection: React.FC<InformationSectionProps> = ({
   };
 
   const addZone = () => {
-    setZones([...zones, { date: "", startTime: "", endTime: "", stayTime: "" }]);
+    setZones([...zones, { date: dayjsStartDate().toDate(), startTime: data.business_hour.start, endTime: data.business_hour.end, stayTime: 2 }]);
   };
 
   const deleteZone = (index: number) => {
     const newZones = zones.filter((_, i) => i !== index);
-    setZones(newZones);
-  };
-
-  const updateZone = (index: number, field: "date" | "startTime" | "endTime" | "stayTime", value: string) => {
-    const newZones = [...zones];
-    const currentZone = newZones[index];
-
-    if (field === "startTime") {
-      const startValue = parseInt(value, 10);
-      const endValue = parseInt(currentZone.endTime, 10) || 96;
-
-      if (startValue >= endValue - 2) {
-        currentZone.endTime = (startValue + 2).toString();
-      }
-
-      currentZone.startTime = value;
-    } else if (field === "endTime") {
-      const endValue = parseInt(value, 10);
-      const startValue = parseInt(currentZone.startTime, 10) || 0;
-
-      if (endValue <= startValue + 2) {
-        currentZone.startTime = (endValue - 2).toString();
-      }
-
-      currentZone.endTime = value;
-    } else {
-      currentZone[field] = value;
-    }
-
     setZones(newZones);
   };
 
@@ -162,7 +163,7 @@ const InformationSection: React.FC<InformationSectionProps> = ({
   return (
     <Box sx={{ width: "100%", padding: "20px", marginTop: "10px" }}>
       <Grid container spacing={2} alignItems="flex-start">
-        {/* Image Section */}
+        {/* Image  */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Box
             component="img"
@@ -177,7 +178,7 @@ const InformationSection: React.FC<InformationSectionProps> = ({
           />
         </Grid>
 
-        {/* Info Section */}
+        {/* Info  */}
         <Grid size={{ xs: 12, md: 6 }} sx={{ position: "relative" }}>
           <Box>
             <Typography
@@ -208,15 +209,15 @@ const InformationSection: React.FC<InformationSectionProps> = ({
         </Grid>
       </Grid>
 
-      {/* Preferred Visit Time Section */}
+      {/* Preferred Visit Time  */}
       <Box sx={{ marginTop: "20px" }}>
         <Typography variant="h6" sx={{ marginBottom: "10px" }}>
           Preferred Visit Time
         </Typography>
 
         {zones.map((zone, index) => {
-          const startTime = parseInt(zone.startTime, 10) || 0;
-          const endTime = parseInt(zone.endTime, 10) || 96;
+          const startTime = zone.startTime || 0;
+          const endTime = zone.endTime || 96;
 
           return (
             <Box key={index} sx={{ marginBottom: "20px" }}>
@@ -227,12 +228,12 @@ const InformationSection: React.FC<InformationSectionProps> = ({
                       <InputLabel>Select Date</InputLabel>
                       <Select
                         fullWidth
-                        value={zone.date}
+                        value={dayjsStartDate(zone.date).format("YYYY-MM-DD")}
                         onChange={(e) => updateZone(index, "date", e.target.value)}
                       >
                         {availableDates.map((date) => (
-                          <MenuItem key={date} value={date}>
-                            {date}
+                          <MenuItem key={date} value={dayjsStartDate(date).format("YYYY-MM-DD")}>
+                            {dayjsStartDate(date).format("YYYY-MM-DD")}
                           </MenuItem>
                         ))}
                       </Select>
@@ -244,7 +245,7 @@ const InformationSection: React.FC<InformationSectionProps> = ({
                       <InputLabel>Start Time</InputLabel>
                       <Select
                         fullWidth
-                        value={zone.startTime}
+                        value={zone.startTime.toString()}
                         onChange={(e) => updateZone(index, "startTime", e.target.value)}
                       >
                         {getFilteredTimeOptions(0, endTime - 2).map((option) => (
@@ -261,7 +262,7 @@ const InformationSection: React.FC<InformationSectionProps> = ({
                       <InputLabel>End Time</InputLabel>
                       <Select
                         fullWidth
-                        value={zone.endTime}
+                        value={zone.endTime.toString()}
                         onChange={(e) => updateZone(index, "endTime", e.target.value)}
                       >
                         {getFilteredTimeOptions(startTime + 2, 96).map((option) => (
@@ -278,7 +279,7 @@ const InformationSection: React.FC<InformationSectionProps> = ({
                       <InputLabel>Stay Time</InputLabel>
                       <Select
                         fullWidth
-                        value={zone.stayTime}
+                        value={zone.stayTime.toString()}
                         onChange={(e) => updateZone(index, "stayTime", e.target.value)}
                       >
                         {generateStayTimeOptions(startTime, endTime).map((option) => (
@@ -314,7 +315,27 @@ const InformationSection: React.FC<InformationSectionProps> = ({
         })}
       </Box>
 
-      <Box sx={{ marginTop: "20px", textAlign: "right" }}>
+      <Box
+        sx={{
+          marginTop: "20px",
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center", // Align error message and button vertically
+          gap: "10px", // Add spacing between error message and button
+        }}
+      >
+        {/* Display error message if any */}
+        {errorMessage && (
+          <Typography
+            variant="body2"
+            color="error"
+            sx={{ textAlign: "right" }}
+          >
+            {errorMessage}
+          </Typography>
+        )}
+
+        {/* Add to Cart Button */}
         <Button
           onClick={handleAddToCartClick}
           color="primary"
@@ -325,23 +346,34 @@ const InformationSection: React.FC<InformationSectionProps> = ({
         </Button>
       </Box>
 
+
       <Dialog open={cartDialogOpen} onClose={handleCartDialogClose}>
-        <Box sx={{ padding: "20px" }}>
-          <Typography variant="h6" sx={{ marginBottom: "10px" }}>
-            Added to Cart
+        <DialogTitle>
+          <Typography variant="h6">Added to Cart</Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            Your item has been successfully added to the cart.
           </Typography>
-          <Box sx={{ display: "flex", justifyContent: "space-between", marginTop: "10px" }}>
-            <Button variant="contained" onClick={() => alert("Go to Cart")}>
-              Go to Cart
-            </Button>
-            <Button variant="outlined" onClick={handleCartDialogClose}>
-              Select Next
-            </Button>
-          </Box>
-        </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            onClick={() => handleClose("cart")}
+          >
+            Go to Cart
+          </Button>
+
+          <Button
+            variant="outlined"
+            onClick={() => handleClose("shopping")}
+          >
+            Select Next
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );
 };
 
-export default InformationSection;
+export default ActivityInformation;
