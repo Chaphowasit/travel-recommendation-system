@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Accommodation, Activity } from "../utils/DataType/place";
 import { AccommodationShoppingCartItem, ActivityShoppingCartItem } from "../utils/DataType/shoppingCart";
-import { dayjsStartDate } from "../utils/time";
+import { dayjsStartDate, generateDateRange } from "../utils/time";
 
 interface PlannerViewProps {
   isSelectedDates: boolean,
@@ -41,57 +41,116 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
   const [messages, setMessages] = useState<{ sender: string; text: string }[]>([]);
   const [recommendAccommodations, setRecommendAccommodations] = useState<Accommodation[]>([
     {
-      id: "1",
-      name: "Cozy Mountain Cabin",
-      description: "A serene mountain retreat with stunning views and cozy interiors.",
-      tag: "Cabin",
-      business_hour: { start: 8, end: 20 },
-      image: "https://picsum.photos/300/200?random=1",
+      "business_hour": {
+        "end": 96,
+        "start": 0
+      },
+      "description": "By The Sea is a highly-rated hotel in Cape Panwa, Phuket, with a 4.5/5 rating based on 505 reviews, making it the second-best hotel in the Wichit area. The hotel combines value, comfort, and convenience, offering amenities like free Wi-Fi, air conditioning, flat-screen TVs, and a refrigerator in guest rooms. Guests can enjoy a pool, free breakfast, and access to room service and concierge services. Additional conveniences include free parking and proximity to local Indian restaurants. The property features a fitness center, private beach, and various room types, including ocean view and family rooms, all in a peaceful setting.",
+      "id": "H0036",
+      "image": "https://www.bytheseaphuket.com/images/1258.jpg",
+      "name": "By The Sea Phuket Beach Resort",
+      "tag": "hotel, restaurant, beach"
     },
     {
-      id: "2",
-      name: "Beachfront Villa",
-      description: "Luxurious villa by the beach with private access and premium amenities.",
-      tag: "Villa",
-      business_hour: { start: 9, end: 22 },
-      image: "https://picsum.photos/300/200?random=2",
-    },
-    {
-      id: "3",
-      name: "Urban City Apartment",
-      description: "Modern apartment in the heart of the city, close to attractions.",
-      tag: "Apartment",
-      business_hour: { start: 6, end: 23 },
-      image: "https://picsum.photos/300/200?random=3",
-    },
+      "business_hour": {
+        "end": 96,
+        "start": 0
+      },
+      "description": "\"See Sea\" boutique hotel in Kalim, Phuket, offers a peaceful retreat just minutes from Patong beach. Rated 3.5 out of 5 based on 58 reviews, the hotel features spacious, ocean-view suites inspired by Shino-Portuguese architecture. Amenities include free parking, high-speed WiFi, a pool, hot tub, free breakfast, a bar, and a restaurant. The hotel is recognized for its cleanliness and value, making it a solid choice for visitors seeking a blend of tranquility and accessibility to local attractions.",
+      "id": "H0418",
+      "image": "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/02/57/3f/94/see-sea-phuket.jpg",
+      "name": "See Sea Phuket",
+      "tag": "boutique hotel, beach, restaurant"
+    }
   ]);
+
+
 
   const [recommendActivities, setRecommendActivities] = useState<Activity[]>([
     {
-      id: "4",
-      name: "Hiking Adventure",
-      description: "Explore scenic trails with guided hiking tours.",
-      tag: "Outdoor",
-      business_hour: { start: 6, end: 18 },
-      image: "https://picsum.photos/300/200?random=4",
+      "business_hour": {
+        "end": 96,
+        "start": 0
+      },
+      "description": "Friendship Beach, located in Rawai on Phuket's southeastern coast, is a serene and picturesque destination ideal for relaxation. Known for its tranquil atmosphere, it provides a peaceful escape from busier tourist areas. Although swimming is not recommended due to shallow tides, visitors can enjoy leisurely walks, yoga, and stunning views of Chalong Bay. The beach hosts wellness retreats, cozy resorts, and beachside restaurants serving delicious Thai cuisine, making it a hidden gem for those seeking tranquility in Phuket.",
+      "duration": 8,
+      "id": "A2103",
+      "image": "https://cf.bstatic.com/xdata/images/hotel/max1024x768/229825375.jpg?k=9f96592ae1c2a9f5143a6f5060dca932a848f6b2d8675a04f73addcb813b5826&o=&hp=1",
+      "name": "Friendship Beach",
+      "tag": "beach, wellness retreat, restaurant"
     },
     {
-      id: "5",
-      name: "Scuba Diving",
-      description: "Discover underwater wonders with professional instructors.",
-      tag: "Water Activity",
-      business_hour: { start: 8, end: 17 },
-      image: "https://picsum.photos/300/200?random=5",
+      "business_hour": {
+        "end": 96,
+        "start": 0
+      },
+      "description": "Ban Nam Khem Tsunami Memorial Park, located 7 kilometers from Takua Pa District in Phuket, Thailand, spans 8,000 square meters and features five main areas: Resting Area, Health Area, Playground Area, and the Tsunami Memorial Area, which highlights a curved concrete wall symbolizing the tsunami opposite a damaged fishing boat. A clay wall inscribed with over 1,400 names of tsunami victims adds to the memorial aspect. The park also includes a royal statue, a Buddha Image worshipped by fishermen, seafood restaurants, tourist information, and local souvenirs. Adjacent to a beautiful beach with white sand and clear water, the park serves as both a poignant reminder of the tragedy and a pleasant spot for family picnics. It is open 24/7, with the exhibition building operating from 8:00 AM to 5:00 PM.",
+      "duration": 8,
+      "id": "A2004",
+      "image": "https://www.thegopinivasgrand.com/wp-content/uploads/2022/12/Tsunami-Memorial-Park-Kanyakumari.jpg",
+      "name": "Tsunami Memorial Park",
+      "tag": "memorial park, beach, seafood restaurants"
     },
     {
-      id: "6",
-      name: "City Walking Tour",
-      description: "Learn the history of the city with an experienced guide.",
-      tag: "Tour",
-      business_hour: { start: 10, end: 16 },
-      image: "https://picsum.photos/300/200?random=6",
+      "business_hour": {
+        "end": 96,
+        "start": 0
+      },
+      "description": "Nai Harn Beach is a tranquil seaside resort in Phuket, characterized by a village atmosphere and a relaxed, slightly hippy vibe. It features simple shops offering beachwear and Thai crafts, along with casual restaurants serving local cuisine. Visitors can explore the serene grounds of the nearby Wat Nai Harn monastery and enjoy jogging and paddleboating at the tree-lined Nai Harn Lake. The beach is renowned for its fine sand.",
+      "duration": 8,
+      "id": "A0206",
+      "image": "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/17/48/24/64/img-20190411-110938-largejpg.jpg",
+      "name": "Nai Harn Beach",
+      "tag": "beach, restaurant, monastery"
     },
+    {
+      "business_hour": {
+        "end": 96,
+        "start": 0
+      },
+      "description": "A serene massage and wellness center in Phuket, Thailand, known for its tranquil atmosphere and professional services, offering a variety of treatments to relax the body and rejuvenate the mind.",
+      "duration": 1,
+      "id": "A0193",
+      "image": "https://media-cdn.tripadvisor.com/media/photo-s/09/b8/e4/8c/carpe-diem-massage-phuket.jpg",
+      "name": "Carpe Diem Massage Phuket",
+      "tag": "wellness center, massage therapy, relaxation treatments"
+    }
   ]);
+
+  const handleSetRecommendAccommodations = (newAccommodations: Accommodation[]) => {
+    setRecommendAccommodations((prev) => {
+      // Use new accommodations as the base list
+      const updatedList = [...newAccommodations];
+
+      // Append old accommodations only if their ID is not already in the new list
+      for (const oldAccommodation of prev) {
+        if (!newAccommodations.some((newItem) => newItem.id === oldAccommodation.id)) {
+          updatedList.push(oldAccommodation);
+        }
+      }
+
+      // Return only the first 8 items
+      return updatedList.slice(0, 8);
+    });
+  };
+
+  const handleSetRecommendActivities = (newActivities: Activity[]) => {
+    setRecommendActivities((prev) => {
+      // Use new activities as the base list
+      const updatedList = [...newActivities];
+
+      // Append old activities only if their ID is not already in the new list
+      for (const oldActivity of prev) {
+        if (!newActivities.some((newItem) => newItem.id === oldActivity.id)) {
+          updatedList.push(oldActivity);
+        }
+      }
+
+      // Return only the first 8 items
+      return updatedList.slice(0, 8);
+    });
+  };
+
 
   const [accommodationShoppingCartItem, setAccommodationShoppingCartItem] = useState<AccommodationShoppingCartItem | null>(null);
   const [activityShoppingCartItem, setActivityShoppingCartItem] = useState<ActivityShoppingCartItem[]>([]);
@@ -108,18 +167,6 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
 
       return a.stayTime - b.stayTime;
     });
-  };
-
-  const generateDateRange = (startDate: Date, endDate: Date) => {
-    const dates: string[] = [];
-    let currentDate = dayjsStartDate(startDate);
-
-    while (currentDate.isBefore(dayjsStartDate(endDate)) || currentDate.isSame(endDate, "day")) {
-      dates.push(currentDate.format("YYYY-MM-DD")); // Fix: Display date-only without timezone shift
-      currentDate = currentDate.add(1, "day");
-    }
-
-    return dates;
   };
 
   // Helper function to remove duplicate zones
@@ -389,29 +436,32 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
                     </Select>
 
                   </FormControl>
-                  {JSON.stringify(selectedDates)}
                 </Box>
               </Box>
 
               <Box
                 sx={{
-                  flex: 1,
+                  flex: 1, // Ensures the ChatSection takes the remaining available space
+                  overflow: "hidden", // Prevent content from overflowing the parent
                 }}
               >
-                <ChatSection
-                  messages={messages}
-                  setMessages={setMessages}
-                  setRecommendAccommodations={(newAccommodations) =>
-                    setRecommendAccommodations((prev) =>
-                      [...newAccommodations, ...prev].slice(0, 8)
-                    )
-                  }
-                  setRecommendActivities={(newActivities) =>
-                    setRecommendActivities((prev) =>
-                      [...newActivities, ...prev].slice(0, 8)
-                    )
-                  }
-                />
+                <Box
+                  sx={{
+                    height: "100%",
+                    overflowY: "auto", // Enable scrolling inside the chat section when content overflows
+                  }}
+                >
+                  <ChatSection
+                    messages={messages}
+                    setMessages={setMessages}
+                    setRecommendAccommodations={(newAccommodations) =>
+                      handleSetRecommendAccommodations(newAccommodations)
+                    }
+                    setRecommendActivities={(newActivities) =>
+                      handleSetRecommendActivities(newActivities)
+                    }
+                  />
+                </Box>
               </Box>
             </Box>
 

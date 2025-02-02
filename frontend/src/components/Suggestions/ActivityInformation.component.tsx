@@ -19,7 +19,7 @@ import AddIcon from "@mui/icons-material/Add";
 import React, { useEffect, useState } from "react";
 import { Activity } from "../../utils/DataType/place";
 import { ActivityShoppingCartItem } from "../../utils/DataType/shoppingCart";
-import { dayjsStartDate } from "../../utils/time";
+import { dayjsStartDate, formatTime, generateDateRange } from "../../utils/time";
 
 interface ActivityInformationProps {
   data: Activity;
@@ -29,25 +29,6 @@ interface ActivityInformationProps {
   switchPanel: (panel: "cart" | "shopping") => void
 }
 
-const formatTime = (value: number) => {
-  const hours = Math.floor(value / 4);
-  const minutes = (value % 4) * 15;
-  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-};
-
-const generateDateRange = (startDate: Date, endDate: Date) => {
-  const dates: string[] = [];
-  let currentDate = dayjsStartDate(startDate);
-
-  while (currentDate.isBefore(dayjsStartDate(endDate)) || currentDate.isSame(endDate, "day")) {
-    dates.push(currentDate.format("YYYY-MM-DD")); // Fix: Display date-only without timezone shift
-    currentDate = currentDate.add(1, "day");
-  }
-
-  return dates;
-};
-
-
 const ActivityInformation: React.FC<ActivityInformationProps> = ({
   data,
   selectedDates,
@@ -56,12 +37,12 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   switchPanel,
 }) => {
   const [zones, setZones] = useState<{ date: Date; startTime: number; endTime: number; stayTime: number }[]>([
-    { date: dayjsStartDate().toDate(), startTime: data.business_hour.start, endTime: data.business_hour.end, stayTime: 2 },
+    { date: dayjsStartDate().toDate(), startTime: data.business_hour.start, endTime: data.business_hour.end, stayTime: data.duration },
   ]);
   const [cartDialogOpen, setCartDialogOpen] = useState(false);
   const handleClose = (action: "cart" | "shopping") => {
-      switchPanel(action)
-      setCartDialogOpen(false); // Close the dialog
+    switchPanel(action)
+    setCartDialogOpen(false); // Close the dialog
   };
 
   const timeOptions = Array.from({ length: 97 }, (_, i) => ({
@@ -71,7 +52,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
 
   const generateStayTimeOptions = (startTime: number, endTime: number) => {
     const maxStayTime = endTime - startTime;
-    return Array.from({ length: maxStayTime - 2 + 1 }, (_, i) => i + 2).map((value) => ({
+    return Array.from({ length: maxStayTime }, (_, i) => i + 1).map((value) => ({
       value,
       label: `${Math.floor(value / 4)}h ${(value % 4) * 15}m`,
     }));
@@ -95,7 +76,11 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   const handleAddToCartClick = () => {
     // Validate that all dropdowns are filled before adding to the cart
     const allFieldsFilled = zones.every(
-      (zone) => zone.date && zone.startTime && zone.endTime && zone.stayTime
+      (zone) =>
+        zone.date &&
+        zone.startTime !== undefined &&
+        zone.endTime !== undefined &&
+        zone.stayTime !== undefined
     );
 
     if (!allFieldsFilled) {
@@ -125,6 +110,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
       }
 
       currentZone.startTime = startValue;
+      currentZone.stayTime = Math.min(currentZone.stayTime, endValue - startValue);
     } else if (field === "endTime") {
       const endValue = parseInt(value, 10);
       const startValue = currentZone.startTime || 0;
@@ -134,10 +120,14 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
       }
 
       currentZone.endTime = endValue;
+      currentZone.stayTime = Math.min(currentZone.stayTime, endValue - startValue);
     } else if (field === "date") {
       currentZone.date = dayjsStartDate(value).toDate();
     } else {
-      currentZone[field] = parseInt(value, 10);
+      const stayTime = parseInt(value, 10);
+      const maxStayTime = currentZone.endTime - currentZone.startTime;
+
+      currentZone.stayTime = Math.min(stayTime, maxStayTime);
     }
 
     setZones(newZones);
@@ -148,7 +138,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   };
 
   const addZone = () => {
-    setZones([...zones, { date: dayjsStartDate().toDate(), startTime: data.business_hour.start, endTime: data.business_hour.end, stayTime: 2 }]);
+    setZones([...zones, { date: dayjsStartDate().toDate(), startTime: data.business_hour.start, endTime: data.business_hour.end, stayTime: data.duration }]);
   };
 
   const deleteZone = (index: number) => {
@@ -171,7 +161,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
             alt={data.name}
             sx={{
               width: "100%",
-              height: "auto",
+              height: "250px",
               objectFit: "cover",
               borderRadius: "4px",
             }}
@@ -349,7 +339,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
 
       <Dialog open={cartDialogOpen} onClose={handleCartDialogClose}>
         <DialogTitle>
-          <Typography variant="h6">Added to Cart</Typography>
+          Added to Cart
         </DialogTitle>
         <DialogContent>
           <Typography variant="body1">

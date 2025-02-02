@@ -25,3 +25,17 @@ export const formatTime = (value: number) => {
     const minutes = (value % 4) * 15;
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 };
+
+// ======================== Date range ============================
+
+export const generateDateRange = (startDate: Date, endDate: Date) => {
+  const dates: string[] = [];
+  let currentDate = dayjsStartDate(startDate);
+
+  while (currentDate.isBefore(dayjsStartDate(endDate)) || currentDate.isSame(endDate, "day")) {
+    dates.push(currentDate.format("YYYY-MM-DD")); // Fix: Display date-only without timezone shift
+    currentDate = currentDate.add(1, "day");
+  }
+
+  return dates;
+};

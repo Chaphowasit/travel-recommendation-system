@@ -16,7 +16,7 @@ import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import React, { useEffect, useState } from "react";
 import { Accommodation } from "../../utils/DataType/place";
 import { AccommodationShoppingCartItem } from "../../utils/DataType/shoppingCart";
-import { dayjsStartDate, formatTime } from "../../utils/time";
+import { dayjsStartDate, formatTime, generateDateRange } from "../../utils/time";
 
 
 interface AccommodationInformationProps {
@@ -26,19 +26,6 @@ interface AccommodationInformationProps {
   setShoppingCartItem: (items: AccommodationShoppingCartItem) => void; // Function to update the shopping cart
   switchPanel: (panel: "cart" | "shopping") => void
 }
-
-const generateDateRange = (startDate: Date, endDate: Date) => {
-  const dates: string[] = [];
-  let currentDate = dayjsStartDate(startDate);
-
-  while (currentDate.isBefore(dayjsStartDate(endDate)) || currentDate.isSame(endDate, "day")) {
-    dates.push(currentDate.format("YYYY-MM-DD")); // Fix: Display date-only without timezone shift
-    currentDate = currentDate.add(1, "day");
-  }
-
-  return dates;
-};
-
 
 const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
   data,
@@ -61,7 +48,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
 
   const generatesleepTimeOptions = (morning: number, evening: number) => {
     const maxsleepTime = evening - morning;
-    return Array.from({ length: maxsleepTime - 2 + 1 }, (_, i) => i + 2).map((value) => ({
+    return Array.from({ length: maxsleepTime }, (_, i) => i + 1).map((value) => ({
       value,
       label: `${Math.floor(value / 4)}h ${(value % 4) * 15}m`,
     }));
@@ -93,7 +80,11 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
   const handleAddToCartClick = () => {
     // Validate that all dropdowns are filled before adding to the cart
     const allFieldsFilled = zones.every(
-      (zone) => zone.date && zone.morning && zone.evening && zone.sleepTime
+      (zone) =>
+        zone.date &&
+        zone.morning !== undefined &&
+        zone.evening !== undefined &&
+        zone.sleepTime !== undefined
     );
 
     if (!allFieldsFilled) {
@@ -114,33 +105,50 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
   const updateZone = (index: number, field: "date" | "morning" | "evening" | "sleepTime", value: string) => {
     const newZones = [...zones];
     const currentZone = newZones[index];
-
+    const nextZone = newZones[index + 1];
+  
     if (field === "morning") {
       const startValue = parseInt(value, 10);
       const endValue = currentZone.evening || 96;
-
+  
       if (startValue >= endValue - 2) {
         currentZone.evening = startValue + 2;
       }
-
-      currentZone.morning = startValue
-    } else if (field === "evening") {
+  
+      currentZone.morning = startValue;
+      
+      // Revalidate sleepTime using the next zone's morning time
+      const nextMorningTime = nextZone ? nextZone.morning + 96 : 96;
+      currentZone.sleepTime = Math.min(currentZone.sleepTime, nextMorningTime - endValue);
+    } 
+    else if (field === "evening") {
       const endValue = parseInt(value, 10);
       const startValue = currentZone.morning || 0;
-
+  
       if (endValue <= startValue + 2) {
         currentZone.morning = endValue - 2;
       }
-
-      currentZone.evening = endValue
-    } else if (field === "date") {
+  
+      currentZone.evening = endValue;
+  
+      // Revalidate sleepTime using the next zone's morning time
+      const nextMorningTime = nextZone ? nextZone.morning + 96 : 96;
+      currentZone.sleepTime = Math.min(currentZone.sleepTime, nextMorningTime - endValue);
+    } 
+    else if (field === "date") {
       currentZone.date = dayjsStartDate(value).toDate();
-    } else {
-      currentZone.sleepTime = parseInt(value, 10);
+    } 
+    else {
+      const sleepTime = parseInt(value, 10);
+      const nextMorningTime = nextZone ? nextZone.morning + 96 : 96;
+      const maxSleepTime = nextMorningTime - currentZone.evening;
+  
+      currentZone.sleepTime = Math.min(sleepTime, maxSleepTime);
     }
-
+  
     setZones(newZones);
   };
+  
 
   const handleCartDialogClose = () => {
     setCartDialogOpen(false);
@@ -161,7 +169,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
             alt={data.name}
             sx={{
               width: "100%",
-              height: "auto",
+              height: "250px",
               objectFit: "cover",
               borderRadius: "4px",
             }}
@@ -208,6 +216,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
         {zones.map((zone, index) => {
           const morning = zone.morning || 0;
           const evening = zone.evening || 96;
+          const nextZone = zones[index + 1];
 
           return (
             <Box key={index} sx={{ marginBottom: "20px" }}>
@@ -272,6 +281,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
                         fullWidth
                         value={zone.sleepTime.toString()}
                         onChange={(e) => updateZone(index, "sleepTime", e.target.value)}
+                        disabled={!nextZone}
                       >
                         {generatesleepTimeOptions(morning, evening).map((option) => (
                           <MenuItem key={option.value} value={option.value}>
@@ -322,7 +332,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
 
       <Dialog open={cartDialogOpen} onClose={handleCartDialogClose}>
         <DialogTitle>
-          <Typography variant="h6">Added to Cart</Typography>
+          Added to Cart
         </DialogTitle>
         <DialogContent>
           <Typography variant="body1">
