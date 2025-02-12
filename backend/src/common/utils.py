@@ -1,5 +1,6 @@
 import ast
 import datetime
+import math
 from typing import Dict, List, Optional
 
 
@@ -98,6 +99,9 @@ def transform_time_to_int(start_time, end_time):
     end_int = convert_time_to_int(end_total_minutes, is_start=False)
     return start_int, end_int
 
+
+def transform_sec_to_int(sec):
+    return math.ceil(sec / (60 * 15))
 
 def rename_field(place_id: str, item: Dict) -> Dict:
     result = {

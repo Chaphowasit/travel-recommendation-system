@@ -1,5 +1,6 @@
 from adapters.Weaviate import Weaviate_Adapter
 from adapters.MariaDB import MariaDB_Adaptor
+from common.mariadb_schema import Accommodation, Activity
 from controllers.chatbot import Chatbot
 from common.utils import rename_field
 
@@ -63,7 +64,7 @@ def fetch_place_detail(
             place["description"] = summarize_description(place.get("tag"))
             place["tag"] = NER(place.get("tag"))
             
-            mariadb_adaptor.update_value_by_id("Activity", place["id"], {
+            mariadb_adaptor.update_value_by_place_id(Activity, place["id"], {
                 "description": place["description"],
                 "about_and_tags": place["tag"] 
             })
@@ -73,7 +74,7 @@ def fetch_place_detail(
             place["description"] = summarize_description(place.get("tag"))
             place["tag"] = NER(place.get("tag"))
             
-            mariadb_adaptor.update_value_by_id("Accommodation", place["id"], {
+            mariadb_adaptor.update_value_by_place_id(Accommodation, place["id"], {
                 "description": place["description"],
                 "about_and_tags": place["tag"] 
             })

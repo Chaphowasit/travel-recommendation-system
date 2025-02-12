@@ -1,7 +1,7 @@
 import logging
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from controllers.ventical_n_day.vrp import vehicle_routing_problem
+from controllers.ventical_n_day.vrp import VRPSolver
 from adapters.Weaviate import Weaviate_Adapter
 from adapters.MariaDB import MariaDB_Adaptor
 from controllers.chatbot import Chatbot
@@ -68,11 +68,9 @@ def send_message():
         logger.info(f"{place_type} type detected for recommendation")
 
         if place_type == "Activity":
-            response = chatbot.recommend_place(activity_response_json, message).content
+            response = chatbot.recommend_place(activity_response_json, message)
         else:
-            response = chatbot.recommend_place(
-                accommodation_response_json, message
-            ).content
+            response = chatbot.recommend_place(accommodation_response_json, message)
 
         result = {
             "user_message": response,
@@ -99,101 +97,127 @@ def generate_route():
     try:
         # Sample hardcoded payload for testing
         vrp_payload = {
-            "accommodation": "H0021",
+            "accommodation": {
+                "id": "H0021",
+                "sleepTimes": [
+                    {"morning": 28, "evening": 74, "sleepTime": 32},
+                    {"morning": 30, "evening": 72, "sleepTime": 32},
+                    {"morning": 30, "evening": 64, "sleepTime": 32},
+                ]
+            },
             "activities": [
-                {
-                    "day": 1,
-                    "place": [
-                        {
-                            "id": "A0423",
-                            "visit_time": [{"start": 40, "end": 48}],
-                            "must": True,
-                        },
-                        {
-                            "id": "A0153",
-                            "visit_time": [{"start": 56, "end": 68}],
-                            "must": False,
-                        },
-                        {
-                            "id": "A0155",
-                            "visit_time": [{"start": 56, "end": 68}],
-                            "must": True,
-                        },
-                        {
-                            "id": "A0512",
-                            "visit_time": [{"start": 64, "end": 72}],
-                            "must": False,
-                        },
-                    ],
-                    "time_anchor": {"morning": 28, "evening": 72},
-                },
-                {
-                    "day": 2,
-                    "place": [
-                        {
-                            "id": "A0527",
-                            "visit_time": [
-                                {"start": 30, "end": 34},
-                                {"start": 38, "end": 48},
-                            ],
-                            "must": True,
-                        },
-                        {
-                            "id": "A0444",
-                            "visit_time": [
-                                {"start": 52, "end": 60}, 
-                                {"start": 72, "end": 84}
-                            ],
-                            "must": True,
-                        },
-                        {
-                            "id": "A0002",
-                            "visit_time": [
-                                {"start": 60, "end": 64}
-                            ],
-                            "must": True,
-                        },
-                        {
-                            "id": "A0238",
-                            "visit_time": [
-                                {"start": 68, "end": 72}
-                            ],
-                            "must": False,
-                        },
-                    ],
-                    "time_anchor": {"morning": 30, "evening": 72},
-                },
-                {
-                    "day": 3,
-                    "place": [
-                        {
-                            "id": "A0055",
-                            "visit_time": [{"start": 40, "end": 48}],
-                            "must": True,
-                        },
-                        {
-                            "id": "A0815",
-                            "visit_time": [{"start": 52, "end": 60}],
-                            "must": False,
-                        },
-                        {
-                            "id": "A0809",
-                            "visit_time": [{"start": 68, "end": 72}],
-                            "must": True,
-                        },
-                        {
-                            "id": "A0234",
-                            "visit_time": [{"start": 68, "end": 72}],
-                            "must": False,
-                        },
-                    ],
-                    "time_anchor": {"morning": 28, "evening": 72},
-                },
+                [
+                    {
+                        "id": "A0423",
+                        "visit_time": [
+                            {"start": 22, "end": 44},
+                            {"start": 60, "end": 72}
+                        ],
+                    },
+                    {
+                        "id": "A0153",
+                        "visit_time": [
+                            {"start": 26, "end": 68}
+                        ],
+                    },
+                    {
+                        "id": "A0155",
+                        "visit_time": [
+                            {"start": 30, "end": 52},
+                            {"start": 56, "end": 78}
+                        ],
+                    },
+                    {
+                        "id": "A0512",
+                        "visit_time": [
+                            {"start": 25, "end": 40},
+                            {"start": 54, "end": 72}
+                        ],
+                    }, 
+                ],
+                [
+                    {
+                        "id": "A0527",
+                        "visit_time": [
+                            {"start": 20, "end": 34},
+                            {"start": 38, "end": 58},
+                        ],
+
+                    },
+                    {
+                        "id": "A0444",
+                        "visit_time": [
+                            {"start": 42, "end": 60}, 
+                            {"start": 72, "end": 94}
+                        ],
+
+                    },
+                    {
+                        "id": "A0002",
+                        "visit_time": [
+                            {"start": 50, "end": 64}
+                        ],
+
+                    },
+                    {
+                        "id": "A0238",
+                        "visit_time": [
+                            {"start": 48, "end": 72}
+                        ],
+
+                    },
+                ],
+                [
+                    {
+                        "id": "A0055",
+                        "visit_time": [
+                            {"start": 40, "end": 68},
+                            {"start": 28, "end": 64},
+                        ],
+
+                    },
+                    {
+                        "id": "A0787",
+                        "visit_time": [
+                            {"start": 22, "end": 40},
+                            {"start": 36, "end": 74},
+                        ],
+
+                    },
+                    {
+                        "id": "A0786",
+                        "visit_time": [
+                            {"start": 28, "end": 42}
+                        ],
+
+                    },
+                    {
+                        "id": "A0234",
+                        "visit_time": [
+                            {"start": 58, "end": 72}
+                        ],
+                    },
+                ]
             ],
+            "activities_stayTime": {
+                "A0423": 8,
+                "A0153": 12,
+                "A0155": 16,
+                "A0512": 20,
+                "A0527": 8,
+                "A0444": 15,
+                "A0002": 19,
+                "A0238": 21,
+                "A0055": 4,
+                "A0787": 8,
+                "A0786": 13,
+                "A0234": 11,
+            }
         }
 
         logger.debug(f"VRP payload: {vrp_payload}")
-        vrp_result = vehicle_routing_problem(vrp_payload)
+        vrp_solver = VRPSolver(vrp_payload)
+        vrp_result = vrp_solver.solve()
         logger.info(f"VRP Result: {vrp_result}")
         return jsonify(vrp_result)
 

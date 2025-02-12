@@ -50,7 +50,7 @@ class Accommodation(Base):
 
 
 class Duration(Base):
-    __tablename__ = "durations"
+    __tablename__ = "Duration"
 
     source_id = Column(String(255), nullable=False)
     destination_id = Column(String(255), nullable=False)

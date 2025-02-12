@@ -118,7 +118,7 @@ class Chatbot:
         )
         response = self.model.invoke([HumanMessage(content=full_text)])
         self.logger.debug(f"Recommendation response: {response}")
-        return response
+        return response.content
 
     def idk(self, text):
         self.logger.info(f"Handling user input: {text}")

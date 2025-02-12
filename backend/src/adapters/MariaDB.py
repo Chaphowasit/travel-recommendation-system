@@ -3,8 +3,9 @@ import sqlalchemy
 import logging
 import os
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.dialects.mysql import insert
 from common.mariadb_schema import Activity, Accommodation, Duration
-from common.utils import transform_time_to_int
+from common.utils import transform_sec_to_int, transform_time_to_int
 from typing import Dict, List, Tuple, Any
 
 # Configure logging
@@ -23,26 +24,6 @@ class MariaDB_Adaptor:
 
     def get_engine(self):
         return self.engine
-
-    def select_activity_by_id(self, activity_id):
-        activity = (
-            self.session.query(Activity).filter(Activity.id == activity_id).first()
-        )
-        if activity:
-            return activity
-        else:
-            return None
-
-    def select_accommodation_by_id(self, accommodation_id):
-        accommodation = (
-            self.session.query(Accommodation)
-            .filter(Accommodation.id == accommodation_id)
-            .first()
-        )
-        if accommodation:
-            return accommodation
-        else:
-            return None
 
     def fetch_accommodations(
         self, place_ids: List[str]
@@ -75,6 +56,7 @@ class MariaDB_Adaptor:
         for acc in accommodations:
             start_int, end_int = transform_time_to_int(acc.start_time, acc.end_time)
             place_details[acc.id] = {
+                "id": acc.id,
                 "name": acc.name,
                 "about_and_tags": acc.about_and_tags,
                 "description": acc.description,
@@ -133,6 +115,7 @@ class MariaDB_Adaptor:
                 activity.start_time, activity.end_time
             )
             place_details[activity.id] = {
+                "id": activity.id,
                 "name": activity.name,
                 "about_and_tags": activity.about_and_tags,
                 "description": activity.description,
@@ -156,7 +139,7 @@ class MariaDB_Adaptor:
 
         return place_details
     
-    def update_value_by_id(self, table, record_id: str, updates: Dict[str, Any]) -> bool:
+    def update_value_by_place_id(self, table: Activity | Accommodation, record_id: str, updates: Dict[str, Any]) -> bool:
         """
         Updates the specified fields of a record in the given table.
 
@@ -165,10 +148,6 @@ class MariaDB_Adaptor:
         :param updates: A dictionary of column names and values to update.
         :return: True if the update was successful, False otherwise.
         """
-        if table == "Activity":
-            table = Activity
-        if table == "Accommodation":
-            table = Accommodation
         
         try:
             # Build the query
@@ -193,3 +172,52 @@ class MariaDB_Adaptor:
             logger.error(f"Error updating record {record_id} in {table.__tablename__}: {e}")
             return False
 
+    def fetch_durations(self, pairs):
+        """
+        Executes a query to retrieve durations.
+
+        :param pairs: List of (source_id, destination_id) tuples.
+        :return: List of tuples containing (source_id, destination_id, duration).
+        """
+        if not pairs:
+            return []
+
+        records = (
+            self.session.query(Duration)
+            .filter(sqlalchemy.tuple_(Duration.source_id, Duration.destination_id).in_(pairs))
+            .all()
+        )
+
+        return [
+            (
+                record.source_id,
+                record.destination_id,
+                transform_sec_to_int(record.duration),
+            ) for record in records
+        ]
+        
+    def upsert_durations(self, pairs: List[Tuple[int, int, float]]):
+        """
+        Upserts the Duration table with new durations or updates existing records if conflicts occur.
+        
+        :param pairs: List of (source_id, destination_id, duration) tuples.
+        """
+        if not pairs:
+            return
+
+        # Build the list of dictionaries representing the records
+        records = [
+            {"source_id": pair[0], "destination_id": pair[1], "duration": pair[2]} for pair in pairs
+        ]
+
+        # Create an insert statement
+        stmt = insert(Duration).values(records)
+
+        # Use the on_duplicate_key_update clause to handle conflicts
+        stmt = stmt.on_duplicate_key_update(
+            duration=stmt.inserted.duration  # Update duration with the inserted value on conflict
+        )
+
+        # Execute the statement and commit the transaction
+        self.session.execute(stmt)
+        self.session.commit()
