@@ -1,11 +1,28 @@
 import { Activity, Accommodation } from "./place";
 
+export interface Range {
+  start: number;
+  end: number;
+}
+
+export interface ActivityZone { 
+  date: Date; 
+  ranges: Range[]; 
+}
+
 export interface ActivityShoppingCartItem {
   item: Activity;
-  zones: { date: Date; startTime: number; endTime: number; stayTime: number }[];
+  zones: ActivityZone[];
+  stayTime: number;
+}
+
+export interface AccommodationZone { 
+  date: Date; 
+  ranges: Range[]; 
+  sleepTime: number;
 }
 
 export interface AccommodationShoppingCartItem {
   item: Accommodation;
-  zones: { date: Date; morning: number; evening: number; sleepTime: number }[];
+  zones: AccommodationZone[];
 }

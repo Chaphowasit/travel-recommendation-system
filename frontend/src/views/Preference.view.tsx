@@ -26,8 +26,6 @@ const PreferenceView: React.FC<PreferenceViewProps> = ({ onDateChange, setIsSele
             // Ensure the new date is in local timezone and remove time (set to 00:00:00)
             const localDate = dayjsStartDate(newValue);
             setStartDate(localDate);
-    
-            console.log("Selected Date (No Time):", localDate.format("YYYY-MM-DD"));
         }
     };
     

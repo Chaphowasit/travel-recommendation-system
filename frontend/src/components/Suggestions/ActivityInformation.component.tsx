@@ -2,24 +2,23 @@ import {
   Typography,
   Box,
   Grid2 as Grid,
-  IconButton,
-  MenuItem,
-  Select,
   Dialog,
   Button,
-  FormControl,
-  InputLabel,
   DialogActions,
   DialogContent,
   DialogTitle,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
-import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
 import React, { useEffect, useState } from "react";
 import { Activity } from "../../utils/DataType/place";
-import { ActivityShoppingCartItem } from "../../utils/DataType/shoppingCart";
+import { ActivityShoppingCartItem, ActivityZone } from "../../utils/DataType/shoppingCart";
 import { dayjsStartDate, formatTime, generateDateRange } from "../../utils/time";
+import MultiRangeSelectBar from "../utils/MultiRangeSelectBar";
+
 
 interface ActivityInformationProps {
   data: Activity;
@@ -36,118 +35,75 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   setShoppingCartItem,
   switchPanel,
 }) => {
-  const [zones, setZones] = useState<{ date: Date; startTime: number; endTime: number; stayTime: number }[]>([
-    { date: dayjsStartDate().toDate(), startTime: data.business_hour.start, endTime: data.business_hour.end, stayTime: data.duration },
-  ]);
   const [cartDialogOpen, setCartDialogOpen] = useState(false);
   const handleClose = (action: "cart" | "shopping") => {
     switchPanel(action)
     setCartDialogOpen(false); // Close the dialog
   };
 
-  const timeOptions = Array.from({ length: 97 }, (_, i) => ({
-    value: i,
-    label: formatTime(i),
-  }));
-
-  const generateStayTimeOptions = (startTime: number, endTime: number) => {
-    const maxStayTime = endTime - startTime;
-    return Array.from({ length: maxStayTime }, (_, i) => i + 1).map((value) => ({
-      value,
-      label: `${Math.floor(value / 4)}h ${(value % 4) * 15}m`,
-    }));
-  };
-
-  const availableDates =
-    selectedDates.startDate && selectedDates.endDate
-      ? generateDateRange(selectedDates.startDate, selectedDates.endDate)
-      : [];
+  const [zones, setZones] = useState<ActivityZone[]>([]);
+  const [stayHours, setStayHours] = useState<number>(8); // Default stay time
 
   useEffect(() => {
-    // Use existing shoppingCartItem data if available for the current item
     const existingItem = shoppingCartItem.find((cartItem) => cartItem.item.id === data.id);
-    if (existingItem) {
-      setZones(existingItem.zones);
-    }
-  }, [shoppingCartItem, data.id]);
 
-  const [errorMessage, setErrorMessage] = useState<string>(""); // State to store error message
+    if (existingItem) {
+      // If item already in the cart, directly use its zones
+      setZones(existingItem.zones); 
+      setStayHours(existingItem.stayTime); // Set the stay time from cart item
+    } else if (selectedDates.startDate && selectedDates.endDate) {
+      // Generate zones based on selected date range if no existing item in cart
+      const newZones = generateDateRange(selectedDates.startDate, selectedDates.endDate).map(date => ({
+        date: dayjsStartDate(date).toDate(),
+        ranges: [{ start: data.business_hour.start, end: data.business_hour.end }], // Store initial range
+        stayTime: data.duration
+      }));
+      setZones(newZones);
+    }
+  }, [shoppingCartItem, data.id, selectedDates]);
+
+  const handleRangeChange = (index: number, newRanges: { start: number; end: number }[]) => {
+    setZones((prevZones) => {
+      const updatedZones = prevZones.map((zone, i) =>
+        i === index ? { ...zone, ranges: newRanges } : zone
+      );
+
+      // Ensure Stay Hours is less than or equal to the minimum range duration
+      const minRangeDuration = getMinRangeDuration(updatedZones);
+      if (stayHours > minRangeDuration) {
+        setStayHours(minRangeDuration);
+      }
+
+      return updatedZones;
+    });
+  };
+
+  // Calculate the minimum range duration, only if zones are populated
+  const getMinRangeDuration = (zonesToCheck: ActivityZone[] = zones) => {
+    if (zonesToCheck.length === 0) return 0; // Return 0 if zones are not populated yet
+
+    const durations = zonesToCheck.map((zone) =>
+      zone.ranges.map((range) => range.end - range.start)
+    ).flat();
+
+    return Math.min(...durations);
+  };
+
+  const handleStayHoursChange = (value: number) => {
+    setStayHours(value);
+  };
 
   const handleAddToCartClick = () => {
-    // Validate that all dropdowns are filled before adding to the cart
-    const allFieldsFilled = zones.every(
-      (zone) =>
-        zone.date &&
-        zone.startTime !== undefined &&
-        zone.endTime !== undefined &&
-        zone.stayTime !== undefined
-    );
 
-    if (!allFieldsFilled) {
-      setErrorMessage("Please fill out all fields before saving."); // Set error message
-      return;
-    }
-
-    setErrorMessage(""); // Clear error message if validation passes
-
-    // Update or add the current item in the shopping cart
     const updatedCart = shoppingCartItem.filter((cartItem) => cartItem.item.id !== data.id);
-    updatedCart.push({ item: data, zones });
-    setShoppingCartItem(updatedCart); // Update the cart with the new data
+    updatedCart.push({ item: data, zones, stayTime: stayHours });
+
+    setShoppingCartItem(updatedCart);
     setCartDialogOpen(true);
-  };
-  // Update zone with auto-sorting
-  const updateZone = (index: number, field: "date" | "startTime" | "endTime" | "stayTime", value: string) => {
-    const newZones = [...zones];
-    const currentZone = newZones[index];
-
-    if (field === "startTime") {
-      const startValue = parseInt(value, 10);
-      const endValue = currentZone.endTime || 96;
-
-      if (startValue >= endValue - 2) {
-        currentZone.endTime = startValue + 2;
-      }
-
-      currentZone.startTime = startValue;
-      currentZone.stayTime = Math.min(currentZone.stayTime, endValue - startValue);
-    } else if (field === "endTime") {
-      const endValue = parseInt(value, 10);
-      const startValue = currentZone.startTime || 0;
-
-      if (endValue <= startValue + 2) {
-        currentZone.startTime = endValue - 2;
-      }
-
-      currentZone.endTime = endValue;
-      currentZone.stayTime = Math.min(currentZone.stayTime, endValue - startValue);
-    } else if (field === "date") {
-      currentZone.date = dayjsStartDate(value).toDate();
-    } else {
-      const stayTime = parseInt(value, 10);
-      const maxStayTime = currentZone.endTime - currentZone.startTime;
-
-      currentZone.stayTime = Math.min(stayTime, maxStayTime);
-    }
-
-    setZones(newZones);
   };
 
   const handleCartDialogClose = () => {
     setCartDialogOpen(false);
-  };
-
-  const addZone = () => {
-    setZones([...zones, { date: dayjsStartDate().toDate(), startTime: data.business_hour.start, endTime: data.business_hour.end, stayTime: data.duration }]);
-  };
-
-  const deleteZone = (index: number) => {
-    const newZones = zones.filter((_, i) => i !== index);
-    setZones(newZones);
-  };
-
-  const getFilteredTimeOptions = (min: number, max: number) => {
-    return timeOptions.filter((option) => option.value >= min && option.value <= max);
   };
 
   return (
@@ -195,6 +151,9 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
             <Typography variant="body2" color="text.secondary" sx={{ marginBottom: "10px" }}>
               <strong>Tag:</strong> {data.tag}
             </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ marginBottom: "10px" }}>
+              <strong>Business Hour:</strong> {formatTime(data.business_hour.start)} - {formatTime(data.business_hour.end)}
+            </Typography>
           </Box>
         </Grid>
       </Grid>
@@ -206,103 +165,51 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
         </Typography>
 
         {zones.map((zone, index) => {
-          const startTime = zone.startTime || 0;
-          const endTime = zone.endTime || 96;
-
           return (
             <Box key={index} sx={{ marginBottom: "20px" }}>
-              <Grid container spacing={1} alignItems="center">
-                <Grid size={{ xs: 12, md: 10 }} container spacing={2}>
-                  <Grid size={{ xs: 12, sm: 3 }}>
-                    <FormControl fullWidth>
-                      <InputLabel>Select Date</InputLabel>
-                      <Select
-                        fullWidth
-                        value={dayjsStartDate(zone.date).format("YYYY-MM-DD")}
-                        onChange={(e) => updateZone(index, "date", e.target.value)}
-                      >
-                        {availableDates.map((date) => (
-                          <MenuItem key={date} value={dayjsStartDate(date).format("YYYY-MM-DD")}>
-                            {dayjsStartDate(date).format("YYYY-MM-DD")}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid size={{ xs: 6, sm: 3 }}>
-                    <FormControl fullWidth>
-                      <InputLabel>Start Time</InputLabel>
-                      <Select
-                        fullWidth
-                        value={zone.startTime.toString()}
-                        onChange={(e) => updateZone(index, "startTime", e.target.value)}
-                      >
-                        {getFilteredTimeOptions(0, endTime - 2).map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid size={{ xs: 6, sm: 3 }}>
-                    <FormControl fullWidth>
-                      <InputLabel>End Time</InputLabel>
-                      <Select
-                        fullWidth
-                        value={zone.endTime.toString()}
-                        onChange={(e) => updateZone(index, "endTime", e.target.value)}
-                      >
-                        {getFilteredTimeOptions(startTime + 2, 96).map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, sm: 3 }}>
-                    <FormControl fullWidth>
-                      <InputLabel>Stay Time</InputLabel>
-                      <Select
-                        fullWidth
-                        value={zone.stayTime.toString()}
-                        onChange={(e) => updateZone(index, "stayTime", e.target.value)}
-                      >
-                        {generateStayTimeOptions(startTime, endTime).map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
+              <Grid container spacing={2} alignItems="center">
+                <Grid size={{ xs: 12, sm: 2 }}>
+                  <Typography variant="body1">
+                    {dayjsStartDate(zone.date).format("YYYY-MM-DD")}
+                  </Typography>
                 </Grid>
 
                 <Grid
-                  size={{ xs: 12, md: 2 }}
-                  sx={{
-                    display: "flex",
-                    justifyContent: { xs: "center", md: "flex-end" },
-                    marginTop: { xs: "10px", md: "0" },
-                  }}
+                  size={{ xs: 12, sm: 10 }}
+                  sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}
                 >
-                  <IconButton onClick={addZone} color="primary">
-                    <AddIcon />
-                  </IconButton>
-                  {zones.length > 1 && (
-                    <IconButton onClick={() => deleteZone(index)} color="secondary">
-                      <DeleteIcon />
-                    </IconButton>
-                  )}
+                  <MultiRangeSelectBar
+                    totalSlots={96}
+                    range={zone.ranges}
+                    setRange={(newRanges: { start: number; end: number }[]) => handleRangeChange(index, newRanges)}
+                    displayFormat={(value) => formatTime(value)}
+                  />
                 </Grid>
               </Grid>
             </Box>
           );
         })}
+      </Box>
+
+      {/* Stay Hours Select */}
+      <Box sx={{ marginTop: "20px" }}>
+        <Typography variant="h6" sx={{ marginBottom: "10px" }}>
+          Stay Hours
+        </Typography>
+        <FormControl fullWidth>
+          <InputLabel>Stay Hours</InputLabel>
+          <Select
+            value={stayHours}
+            onChange={(e) => handleStayHoursChange(Number(e.target.value))}
+            label="Stay Hours"
+          >
+            {[...Array(getMinRangeDuration())].map((_, index) => (
+              <MenuItem key={index + 1} value={index + 1}>
+                {formatTime(index + 1)} hrs
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
       <Box
@@ -314,16 +221,6 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
           gap: "10px", // Add spacing between error message and button
         }}
       >
-        {/* Display error message if any */}
-        {errorMessage && (
-          <Typography
-            variant="body2"
-            color="error"
-            sx={{ textAlign: "right" }}
-          >
-            {errorMessage}
-          </Typography>
-        )}
 
         {/* Add to Cart Button */}
         <Button
@@ -335,7 +232,6 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
           Add to Cart
         </Button>
       </Box>
-
 
       <Dialog open={cartDialogOpen} onClose={handleCartDialogClose}>
         <DialogTitle>

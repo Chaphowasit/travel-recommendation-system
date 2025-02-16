@@ -154,42 +154,9 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
 
   const [accommodationShoppingCartItem, setAccommodationShoppingCartItem] = useState<AccommodationShoppingCartItem | null>(null);
   const [activityShoppingCartItem, setActivityShoppingCartItem] = useState<ActivityShoppingCartItem[]>([]);
-  const sortZones = (zones: { date: Date; startTime: number; endTime: number; stayTime: number }[]) => {
-    return zones.sort((a, b) => {
-      const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
-      if (dateComparison !== 0) return dateComparison;
-
-      const startTimeComparison = a.startTime - b.startTime;
-      if (startTimeComparison !== 0) return startTimeComparison;
-
-      const endTimeComparison = a.endTime - b.endTime;
-      if (endTimeComparison !== 0) return endTimeComparison;
-
-      return a.stayTime - b.stayTime;
-    });
-  };
-
-  // Helper function to remove duplicate zones
-  const distinctZones = (
-    zones: { date: Date; startTime: number; endTime: number; stayTime: number }[]
-  ) => {
-    return zones.filter((zone, index, self) =>
-      index === self.findIndex(
-        (z) =>
-          z.date.toISOString() === zone.date.toISOString() &&
-          z.startTime === zone.startTime &&
-          z.endTime === zone.endTime &&
-          z.stayTime === zone.stayTime
-      )
-    );
-  };
 
   const updateShoppingCart = (newItems: ActivityShoppingCartItem[]) => {
-    const sortedItems = newItems.map((item) => ({
-      ...item,
-      zones: distinctZones(sortZones(item.zones)),
-    }));
-    setActivityShoppingCartItem(sortedItems);
+    setActivityShoppingCartItem(newItems);
   };
 
 
@@ -242,8 +209,15 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
 
         return {
           date: dayjsStartDate(date).toDate(),
-          morning: 24, // Use business_hour start for morning time
-          evening: 72,   // Use business_hour end for evening time
+          ranges: [
+            {
+              start: 0,
+              end: 24, // Use business_hour start for morning time
+            }, {
+              start: 72,   // Use business_hour end for evening time
+              end: 96,   // Use business_hour end for evening time
+            }
+          ],
           sleepTime: 32,  // Default sleep time (8 hours)
         };
       });
@@ -258,7 +232,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
     }
   };
 
-  const [duration, setDuration] = useState(1); // Default to 1
+  const [duration, setDuration] = useState<number>((selectedDates.endDate.getTime() - selectedDates.startDate.getTime()) / (24 * 60 * 60 * 1000) + 1);
 
 
   const handleDurationChange = (event: SelectChangeEvent<number>) => {
@@ -310,8 +284,15 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
 
         return {
           date: dayjsStartDate(date).toDate(),
-          morning: 24, // Use business_hour start for morning time
-          evening: 72,   // Use business_hour end for evening time
+          ranges: [
+            {
+              start: 0,
+              end: 24, // Use business_hour start for morning time
+            }, {
+              start: 72,   // Use business_hour end for evening time
+              end: 96,   // Use business_hour end for evening time
+            }
+          ],
           sleepTime: 32,  // Default sleep time (8 hours)
         };
       });
