@@ -1,12 +1,18 @@
 import React, { useEffect, useRef } from 'react';
-import { Box, Paper } from '@mui/material';
+import { Box, Paper, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import ReactMarkdown from 'react-markdown'; // Import Markdown parser
 import remarkGfm from 'remark-gfm'; // For GitHub-flavored Markdown (optional)
+import { Message } from '../../utils/DataType/message';
+import { ActivityShoppingCartItem, AccommodationShoppingCartItem } from '../../utils/DataType/shoppingCart';
+import AccommodationCard from '../Suggestions/AccommodationCard.component';
+import ActivityCard from '../Suggestions/ActivityCard.component';
 
 interface ChatWindowProps {
-  messages: { sender: string; text: string }[];
+  messages: Message[];
+  setActivityShoppingCartItem: React.Dispatch<React.SetStateAction<ActivityShoppingCartItem[]>>;
+  setAccommodationShoppingCartItem: React.Dispatch<React.SetStateAction<AccommodationShoppingCartItem>>;
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
@@ -64,10 +70,82 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
               overflowWrap: 'break-word',
             }}
           >
-            <ReactMarkdown
-              children={message.text} // Render Markdown content
-              remarkPlugins={[remarkGfm]} // Optional: GitHub-flavored Markdown
-            />
+            {/* Render Markdown content */}
+            <ReactMarkdown children={message.text} remarkPlugins={[remarkGfm]} />
+
+            {/* Display Accommodations */}
+            {message.accommodations && message.accommodations.length > 0 && (
+              <Box sx={{ marginTop: 2 }}>
+                <Typography variant="h6" sx={{ marginBottom: 1 }}>Accommodations</Typography>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    overflowX: 'auto',
+                    maxWidth: '100%',
+                    paddingBottom: 1,
+                    '&::-webkit-scrollbar': {
+                      height: '6px',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      backgroundColor: '#ccc',
+                      borderRadius: '4px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      backgroundColor: '#f0f0f0',
+                    },
+                  }}
+                >
+                  {message.accommodations.map((accommodation) => (
+                    <Box key={accommodation.id} sx={{ marginRight: 2, flexShrink: 0 }}>
+                      <AccommodationCard
+                        accommodation={accommodation}
+                        onClick={() => {
+                          // Handle the accommodation click
+                          console.log('Accommodation clicked:', accommodation);
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {/* Display Activities */}
+            {message.activities && message.activities.length > 0 && (
+              <Box sx={{ marginTop: 2 }}>
+                <Typography variant="h6" sx={{ marginBottom: 1 }}>Activities</Typography>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    overflowX: 'auto',
+                    maxWidth: '100%',
+                    paddingBottom: 1,
+                    '&::-webkit-scrollbar': {
+                      height: '6px',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      backgroundColor: '#ccc',
+                      borderRadius: '4px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      backgroundColor: '#f0f0f0',
+                    },
+                  }}
+                >
+                  {message.activities.map((activity) => (
+                    <Box key={activity.id} sx={{ marginRight: 2, flexShrink: 0 }}>
+                      <ActivityCard
+                        activity={activity}
+                        onClick={() => {
+                          // Handle the activity click
+                          console.log('Activity clicked:', activity);
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
           </Paper>
         </Box>
       ))}

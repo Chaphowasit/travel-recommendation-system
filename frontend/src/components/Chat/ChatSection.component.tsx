@@ -3,21 +3,17 @@ import ChatWindow from "./ChatWindow.component";
 import InputBox from "./InputBox.component";
 import { useState, useCallback } from "react";
 import { sendMessage } from "../../utils/api";
-import { Accommodation, Activity } from "../../utils/DataType/place";
-
-interface Message {
-    sender: string;
-    text: string;
-}
+import { AccommodationShoppingCartItem, ActivityShoppingCartItem } from "../../utils/DataType/shoppingCart";
+import { Message } from "../../utils/DataType/message";
 
 interface ChatSectionProps {
     messages: Message[];
     setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-    setRecommendAccommodations: (recommendAccommodations: Accommodation[]) => void;
-    setRecommendActivities: (recommendActivities: Activity[]) => void;
+    setActivityShoppingCartItem: React.Dispatch<React.SetStateAction<ActivityShoppingCartItem[]>>;
+    setAccommodationShoppingCartItem: React.Dispatch<React.SetStateAction<AccommodationShoppingCartItem>>;
 }
 
-const ChatSection: React.FC<ChatSectionProps> = ({ messages, setMessages, setRecommendAccommodations, setRecommendActivities }) => {
+const ChatSection: React.FC<ChatSectionProps> = ({ messages, setMessages, setActivityShoppingCartItem, setAccommodationShoppingCartItem }) => {
     const [loading, setLoading] = useState<boolean>(false);
 
     const onSend = useCallback((text: string) => {
@@ -34,18 +30,13 @@ const ChatSection: React.FC<ChatSectionProps> = ({ messages, setMessages, setRec
             .then((response) => {
                 setMessages((prevMessages) => [
                     ...prevMessages,
-                    { sender: 'bot', text: response.data?.user_message || 'Sorry, I didn\'t get that.' },
+                    { 
+                        sender: 'bot', 
+                        text: response.data?.user_message || 'Sorry, I didn\'t get that.', 
+                        accommodations: response.data.accommodations,  
+                        activities: response.data.activities
+                    },
                 ]);
-                if (response.data?.accommodations != null) {
-                    // Send only the new accommodations to the parent
-                    setRecommendAccommodations(response.data.accommodations);
-                }
-                
-                if (response.data?.activities != null) {
-                    // Send only the new activities to the parent
-                    setRecommendActivities(response.data.activities);
-                }
-
             })
             .catch((error) => {
                 console.error('Error sending message:', error);
@@ -63,7 +54,11 @@ const ChatSection: React.FC<ChatSectionProps> = ({ messages, setMessages, setRec
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <ChatWindow messages={messages} />
+            <ChatWindow 
+                messages={messages} 
+                setActivityShoppingCartItem={setActivityShoppingCartItem}
+                setAccommodationShoppingCartItem={setAccommodationShoppingCartItem}
+            />
             <InputBox onSend={onSend} loading={loading} />
         </Box>
     );

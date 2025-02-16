@@ -2,11 +2,7 @@ import {
   Typography,
   Box,
   Grid2 as Grid,
-  Dialog,
   Button,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   MenuItem,
   Select,
   FormControl,
@@ -25,7 +21,7 @@ interface ActivityInformationProps {
   selectedDates: { startDate: Date | null; endDate: Date | null };
   shoppingCartItem: ActivityShoppingCartItem[]; // Initial shopping cart data
   setShoppingCartItem: (items: ActivityShoppingCartItem[]) => void; // Function to update the shopping cart
-  switchPanel: (panel: "cart" | "shopping") => void
+  handleFinished: () => void;
 }
 
 const ActivityInformation: React.FC<ActivityInformationProps> = ({
@@ -33,14 +29,8 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   selectedDates,
   shoppingCartItem,
   setShoppingCartItem,
-  switchPanel,
+  handleFinished,
 }) => {
-  const [cartDialogOpen, setCartDialogOpen] = useState(false);
-  const handleClose = (action: "cart" | "shopping") => {
-    switchPanel(action)
-    setCartDialogOpen(false); // Close the dialog
-  };
-
   const [zones, setZones] = useState<ActivityZone[]>([]);
   const [stayHours, setStayHours] = useState<number>(8); // Default stay time
 
@@ -99,11 +89,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
     updatedCart.push({ item: data, zones, stayTime: stayHours });
 
     setShoppingCartItem(updatedCart);
-    setCartDialogOpen(true);
-  };
-
-  const handleCartDialogClose = () => {
-    setCartDialogOpen(false);
+    handleFinished();
   };
 
   return (
@@ -229,35 +215,10 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
           variant="contained"
           startIcon={<AddShoppingCartIcon />}
         >
-          Add to Cart
+          Save
         </Button>
       </Box>
 
-      <Dialog open={cartDialogOpen} onClose={handleCartDialogClose}>
-        <DialogTitle>
-          Added to Cart
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body1">
-            Your item has been successfully added to the cart.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            variant="contained"
-            onClick={() => handleClose("cart")}
-          >
-            Go to Cart
-          </Button>
-
-          <Button
-            variant="outlined"
-            onClick={() => handleClose("shopping")}
-          >
-            Select Next
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

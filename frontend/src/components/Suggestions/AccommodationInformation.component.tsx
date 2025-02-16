@@ -4,13 +4,9 @@ import {
   Grid2 as Grid,
   MenuItem,
   Select,
-  Dialog,
   Button,
   FormControl,
   InputLabel,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
 } from "@mui/material";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import React, { useEffect, useState } from "react";
@@ -25,7 +21,7 @@ interface AccommodationInformationProps {
   selectedDates: { startDate: Date; endDate: Date };
   shoppingCartItem: AccommodationShoppingCartItem | null; // Initial shopping cart data
   setShoppingCartItem: (items: AccommodationShoppingCartItem) => void; // Function to update the shopping cart
-  switchPanel: (panel: "cart" | "shopping") => void;
+  handleFinished: () => void;
 }
 
 const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
@@ -33,16 +29,10 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
   selectedDates,
   shoppingCartItem,
   setShoppingCartItem,
-  switchPanel,
+  handleFinished,
 }) => {
   const [zones, setZones] = useState<AccommodationZone[]>([]);
-  const [cartDialogOpen, setCartDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
-
-  const handleClose = (action: "cart" | "shopping") => {
-    switchPanel(action);
-    setCartDialogOpen(false); // Close the dialog
-  };
 
   useEffect(() => {
     if (shoppingCartItem && shoppingCartItem.item.id === data.id) {
@@ -99,11 +89,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
       item: data,
       zones: zones,
     });
-    setCartDialogOpen(true);
-  };
-
-  const handleCartDialogClose = () => {
-    setCartDialogOpen(false);
+    handleFinished();
   };
 
   // Handle range changes and sleep time updates
@@ -256,17 +242,6 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
           Add to Cart
         </Button>
       </Box>
-
-      <Dialog open={cartDialogOpen} onClose={handleCartDialogClose}>
-        <DialogTitle>Added to Cart</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1">Your item has been successfully added to the cart.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button variant="contained" onClick={() => handleClose("cart")}>Go to Cart</Button>
-          <Button variant="outlined" onClick={() => handleClose("shopping")}>Select Next</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

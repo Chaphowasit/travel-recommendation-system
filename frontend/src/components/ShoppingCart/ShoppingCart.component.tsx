@@ -21,16 +21,16 @@ import { ActivityShoppingCartItem, AccommodationShoppingCartItem } from "../../u
 
 interface FlattenedShoppingCartItem {
   item: Activity;
-  zone: { date: Date; startTime: number; endTime: number; stayTime: number };
+  zone: { date: Date; start: number; end: number; stayTime: number };
 }
 
 interface ShoppingCartProps {
   activityShoppingCartItem: ActivityShoppingCartItem[];
   setActivityShoppingCartItem: (items: ActivityShoppingCartItem[]) => void;
-  accommodationShoppingCartItem: AccommodationShoppingCartItem | null;
+  accommodationShoppingCartItem: AccommodationShoppingCartItem;
   setAccommodationShoppingCartItem: (item: AccommodationShoppingCartItem) => void;
   selectedDates: { startDate: Date; endDate: Date };
-  switchPanel: (panel: "cart" | "shopping") => void;
+  requestPlaceCall: (request: "accommodation" | "activity") => void;
 }
 
 const formatTime = (value: string | number): string => {
@@ -48,7 +48,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
   accommodationShoppingCartItem,
   setAccommodationShoppingCartItem,
   selectedDates,
-  switchPanel,
+  requestPlaceCall
 }) => {
   const [grouping, setGrouping] = useState<"place" | "date">("place");
   const [selectedItem, setSelectedItem] = useState<
@@ -86,13 +86,22 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
     setSelectedItem(null);
   };
 
-  // Group activities by date
+  // Group activities by date and flatten each zone using its first range.
   const groupedActivitiesByDate = activityShoppingCartItem.reduce(
     (acc, cartItem) => {
       cartItem.zones.forEach((zone) => {
-        const date = zone.date.toISOString().split("T")[0];
-        if (!acc[date]) acc[date] = [];
-        acc[date].push({ item: cartItem.item, zone });
+        const dateStr = zone.date.toISOString().split("T")[0];
+        // Use the first range from the zone, if available.
+        const firstRange = zone.ranges[0] || { start: 0, end: 0 };
+        const flattenedZone = {
+          date: zone.date,
+          start: firstRange.start,
+          end: firstRange.end,
+          stayTime: cartItem.stayTime
+        };
+
+        if (!acc[dateStr]) acc[dateStr] = [];
+        acc[dateStr].push({ item: cartItem.item, zone: flattenedZone });
       });
       return acc;
     },
@@ -123,7 +132,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
         Accommodation
       </Typography>
       <Grid container spacing={2}>
-        {accommodationShoppingCartItem ? (
+        {accommodationShoppingCartItem && accommodationShoppingCartItem.item.id !== "-1" ? (
           <Grid size={{ xs: 12 }}>
             <Card
               sx={{
@@ -175,7 +184,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
               <Button
                 variant="outlined"
                 sx={{ marginTop: "10px" }}
-                onClick={() => switchPanel("shopping")}
+                onClick={() => requestPlaceCall("accommodation")}
               >
                 Select Accommodation
               </Button>
@@ -235,8 +244,8 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {`Time: ${formatTime(groupedItem.zone.startTime)} - ${formatTime(
-                              groupedItem.zone.endTime
+                            {`Time: ${formatTime(groupedItem.zone.start)} - ${formatTime(
+                              groupedItem.zone.end
                             )}`}
                           </Typography>
                         </CardContent>
@@ -302,7 +311,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
               <Typography variant="body2" color="text.secondary">
                 No activities selected.
               </Typography>
-              <Button variant="outlined" sx={{ marginTop: "10px" }} onClick={() => switchPanel("shopping")}>
+              <Button variant="outlined" sx={{ marginTop: "10px" }} onClick={() => requestPlaceCall("activity")}>
                 Select Activities
               </Button>
             </Box>
@@ -319,15 +328,15 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
               selectedDates={selectedDates}
               shoppingCartItem={activityShoppingCartItem}
               setShoppingCartItem={setActivityShoppingCartItem}
-              switchPanel={switchPanel}
+              handleFinished={handleDialogClose}
             />
           ) : (
             <AccommodationInformation
               data={selectedItem.item}
               shoppingCartItem={accommodationShoppingCartItem}
               setShoppingCartItem={setAccommodationShoppingCartItem}
-              switchPanel={switchPanel}
               selectedDates={selectedDates}
+              handleFinished={handleDialogClose}
             />
           )}
         </Dialog>
