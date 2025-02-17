@@ -2,9 +2,7 @@ import * as React from "react";
 import Grid from "@mui/material/Grid2";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
-import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import Typography from "@mui/material/Typography";
 import { FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, useMediaQuery } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -16,7 +14,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AccommodationShoppingCartItem, ActivityShoppingCartItem } from "../utils/DataType/shoppingCart";
 import { dayjsStartDate, generateDateRange } from "../utils/time";
-import { Message } from "../utils/DataType/message";
+import { CALL_ACCOMMODATION, CALL_ACTIVITY, GENERATE_ROUTE, Message } from "../utils/DataType/message";
 
 interface PlannerViewProps {
   isSelectedDates: boolean,
@@ -35,7 +33,6 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
   }, [isSelectedDates, navigate]);
 
   const [isChatOpen, setIsChatOpen] = useState<boolean>(true); // Default to showing chat
-  const [isCartOpen, setIsCartOpen] = useState<boolean>(false); // Toggle between suggestions and cart
   const isXs = useMediaQuery("(max-width:600px)");
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -192,7 +189,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
     }
   };
 
-
+  const [requestCallValue, setRequestCallValue] = useState<CALL_ACCOMMODATION | CALL_ACTIVITY | GENERATE_ROUTE | null>(null)
 
 
   React.useEffect(() => {
@@ -312,8 +309,13 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
                   <ChatSection
                     messages={messages}
                     setMessages={setMessages}
+                    selectedDates={selectedDates}
+                    activityShoppingCartItem={activityShoppingCartItem}
                     setActivityShoppingCartItem={setActivityShoppingCartItem}
+                    accommodationShoppingCartItem={accommodationShoppingCartItem}
                     setAccommodationShoppingCartItem={setAccommodationShoppingCartItem}
+                    requestCallValue={requestCallValue}
+                    clearRequestCallValue={() => {setRequestCallValue(null)}}
                   />
                 </Box>
               </Box>
@@ -362,62 +364,9 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
                   accommodationShoppingCartItem={accommodationShoppingCartItem}
                   setAccommodationShoppingCartItem={setAccommodationShoppingCartItem}
                   selectedDates={selectedDates}
-                  requestPlaceCall={(_) => { }}
+                  requestCall={(requestCall) => { setRequestCallValue(requestCall) }}
                 />
-                {/* {isCartOpen ? (
-                  <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-
-                    <Box sx={{ flex: 1, overflow: "auto" }}>
-                      <ShoppingCart
-                        activityShoppingCartItem={activityShoppingCartItem}
-                        setActivityShoppingCartItem={updateShoppingCart}
-                        accommodationShoppingCartItem={accommodationShoppingCartItem}
-                        setAccommodationShoppingCartItem={setAccommodationShoppingCartItem}
-                        selectedDates={selectedDates}
-                        switchPanel={switchPanel}
-                      />
-                    </Box>
-
-
-                    {activityShoppingCartItem.length > 0 && accommodationShoppingCartItem && (
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "center",
-                          mt: "auto", // pushes this Box to the bottom of the flex container
-                          p: 2,
-                        }}
-                      >
-                        <Box sx={{ width: 220 }}>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            fullWidth
-                            onClick={() => navigate("/your-target-page")} // Replace with your route
-                            sx={{
-                              borderRadius: "12px",
-                              py: 1,
-                            }}
-                          >
-                            Proceed to Checkout
-                          </Button>
-                        </Box>
-                      </Box>
-                    )}
-                  </Box>
-                ) : (
-                  <SuggestionsSection
-                    recommendAccommodations={recommendAccommodations}
-                    recommendActivities={recommendActivities}
-                    selectedDates={selectedDates}
-                    switchPanel={switchPanel}
-                    activityShoppingCartItem={activityShoppingCartItem}
-                    setActivityShoppingCartItem={updateShoppingCart}
-                    accommodationShoppingCartItem={accommodationShoppingCartItem}
-                    setAccommodationShoppingCartItem={setAccommodationShoppingCartItem}
-                  />
-                )} */}
-
+                
               </Box>
             </Box>
           </Grid>

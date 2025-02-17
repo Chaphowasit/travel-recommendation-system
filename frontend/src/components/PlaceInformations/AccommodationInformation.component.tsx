@@ -14,10 +14,11 @@ import { Accommodation } from "../../utils/DataType/place";
 import { AccommodationShoppingCartItem, AccommodationZone, Range } from "../../utils/DataType/shoppingCart";
 import { dayjsStartDate, formatTime, generateDateRange } from "../../utils/time";
 import DualRangeSelectBar from "../utils/DualRangeSelectBar";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 // Define the props
 interface AccommodationInformationProps {
-  data: Accommodation;
+  data: Accommodation | null;
   selectedDates: { startDate: Date; endDate: Date };
   shoppingCartItem: AccommodationShoppingCartItem | null; // Initial shopping cart data
   setShoppingCartItem: (items: AccommodationShoppingCartItem) => void; // Function to update the shopping cart
@@ -31,15 +32,16 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
   setShoppingCartItem,
   handleFinished,
 }) => {
+  if (data === null) return;
+
   const [zones, setZones] = useState<AccommodationZone[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string>("");
 
   useEffect(() => {
     if (shoppingCartItem && shoppingCartItem.item.id === data.id) {
       setZones(shoppingCartItem.zones);
     } else {
       const dates = generateDateRange(selectedDates.startDate, selectedDates.endDate);
-      
+
       const defaultZones = dates.map((date) => ({
         date: dayjsStartDate(date).toDate(),
         ranges: [{ start: 0, end: 24 }, { start: 72, end: 96 }],
@@ -48,7 +50,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
 
       for (let i = 0; i < defaultZones.length; i++) {
         const currentRange = defaultZones[i].ranges;
-        const nextRange = defaultZones[i+1] ? defaultZones[i+1].ranges : [{ start: 0, end: 0 }, { start: 0, end: 0 }];
+        const nextRange = defaultZones[i + 1] ? defaultZones[i + 1].ranges : [{ start: 0, end: 0 }, { start: 0, end: 0 }];
         const rangeStart = currentRange[1].end - currentRange[1].start;
         const rangeEnd = nextRange[0].end - nextRange[0].start;
 
@@ -70,24 +72,18 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
   };
 
   const handleAddToCartClick = () => {
-    const allFieldsFilled = zones.every(
-      (zone) =>
-        zone.date &&
-        zone.ranges[0] &&
-        zone.ranges[1] &&
-        zone.sleepTime !== undefined
-    );
-
-    if (!allFieldsFilled) {
-      setErrorMessage("Please fill out all fields before saving.");
-      return;
-    }
-
-    setErrorMessage(""); // Clear error message if validation passes
 
     setShoppingCartItem({
       item: data,
       zones: zones,
+    });
+    handleFinished();
+  };
+
+  const handleRemoveFromCartClick = () => {
+    setShoppingCartItem({
+      item: { id: "-1", name: "0", description: "0", tag: "0", business_hour: { start: 0, end: 0 }, image: "0" },
+      zones: []
     });
     handleFinished();
   };
@@ -98,22 +94,22 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
     const prevRange = zones[index - 1] ? zones[index - 1].ranges : [{ start: 0, end: 0 }, { start: 0, end: 0 }];
     const currentRange = newRange;
     const nextRange = zones[index + 1] ? zones[index + 1].ranges : [{ start: 0, end: 0 }, { start: 0, end: 0 }];
-  
+
     const prevRangeStart = prevRange[1].end - prevRange[1].start;
     const prevRangeEnd = currentRange[0].end - currentRange[0].start;
     const currRangeStart = currentRange[1].end - currentRange[1].start;
     const currRangeEnd = nextRange[0].end - nextRange[0].start;
-  
+
     const prevMaxSleep = prevRangeStart + prevRangeEnd;
     const currMaxSleep = currRangeStart + currRangeEnd;
-  
+
     // Update the range
     setZones((prevZones) =>
       prevZones.map((zone, i) =>
         i === index ? { ...zone, ranges: currentRange } : zone
       )
     );
-  
+
     // If current zone exceeds max sleep, 
     if (zones[index].sleepTime > currMaxSleep) {
       // Update current zone's sleep time
@@ -125,7 +121,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
     }
 
     // update the previous and current zones
-    if (zones[index-1] && zones[index-1].sleepTime > prevMaxSleep) {
+    if (zones[index - 1] && zones[index - 1].sleepTime > prevMaxSleep) {
       // Update previous zone's sleep time if needed
       setZones((prevZones) =>
         prevZones.map((zone, i) =>
@@ -134,7 +130,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
       );
     }
   };
-  
+
 
   const handleSleepHoursChange = (newSleepHours: number, index: number) => {
     setZones((prevZones) =>
@@ -207,23 +203,23 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
               <Grid size={{ xs: 12, sm: 2 }}>
                 {index != zones.length - 1 && (
                   <FormControl fullWidth>
-                  <InputLabel>Sleep Hours</InputLabel>
-                  <Select
-                    value={zone.sleepTime}
-                    label="Sleep Hours"
-                    onChange={(e) => handleSleepHoursChange(Number(e.target.value), index)}
-                    disabled={index === zones.length - 1} // Disable the last zone to prevent editing
-                  >
-                    {/* Dynamically calculate the available sleep hours */}
-                    {[...Array(calculateMaxSleepHours(index))].map((_, i) => (
-                      <MenuItem key={i} value={i + 2}>
-                        {formatTime(i + 2)} hrs
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                    <InputLabel>Sleep Hours</InputLabel>
+                    <Select
+                      value={zone.sleepTime}
+                      label="Sleep Hours"
+                      onChange={(e) => handleSleepHoursChange(Number(e.target.value), index)}
+                      disabled={index === zones.length - 1} // Disable the last zone to prevent editing
+                    >
+                      {/* Dynamically calculate the available sleep hours */}
+                      {[...Array(calculateMaxSleepHours(index))].map((_, i) => (
+                        <MenuItem key={i} value={i + 2}>
+                          {formatTime(i + 2)} hrs
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 )}
-                
+
               </Grid>
             </Grid>
           </Box>
@@ -232,15 +228,15 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
 
       {/* Error and Add to Cart */}
       <Box sx={{ marginTop: "20px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px" }}>
-        {errorMessage && (
-          <Typography variant="body2" color="error" sx={{ textAlign: "right" }}>
-            {errorMessage}
-          </Typography>
+        <Button onClick={handleAddToCartClick} color="primary" variant="contained" startIcon={<AddShoppingCartIcon />}>
+          Save
+        </Button>
+        {shoppingCartItem?.item.id !== "-1" && shoppingCartItem?.item.id === data.id && (
+          <Button onClick={handleRemoveFromCartClick} color="error" variant="contained" startIcon={<DeleteIcon />}>
+            Remove
+          </Button>
         )}
 
-        <Button onClick={handleAddToCartClick} color="primary" variant="contained" startIcon={<AddShoppingCartIcon />}>
-          Add to Cart
-        </Button>
       </Box>
     </Box>
   );

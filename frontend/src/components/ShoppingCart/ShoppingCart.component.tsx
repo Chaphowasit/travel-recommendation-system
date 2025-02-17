@@ -12,11 +12,16 @@ import {
   Button,
   Accordion,
   AccordionSummary,
-  AccordionDetails} from "@mui/material";
+  AccordionDetails,
+  DialogContent,
+  IconButton
+} from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ActivityInformation from "../Suggestions/ActivityInformation.component";
-import AccommodationInformation from "../Suggestions/AccommodationInformation.component";
-import { Activity } from "../../utils/DataType/place";
+import CloseIcon from "@mui/icons-material/Close";
+import ActivityInformation from "../PlaceInformations/ActivityInformation.component";
+import AccommodationInformation from "../PlaceInformations/AccommodationInformation.component";
+import { Accommodation, Activity } from "../../utils/DataType/place";
+import { CALL_ACCOMMODATION, CALL_ACTIVITY, GENERATE_ROUTE } from "../../utils/DataType/message";
 import { ActivityShoppingCartItem, AccommodationShoppingCartItem } from "../../utils/DataType/shoppingCart";
 
 interface FlattenedShoppingCartItem {
@@ -26,11 +31,11 @@ interface FlattenedShoppingCartItem {
 
 interface ShoppingCartProps {
   activityShoppingCartItem: ActivityShoppingCartItem[];
-  setActivityShoppingCartItem: (items: ActivityShoppingCartItem[]) => void;
+  setActivityShoppingCartItem: React.Dispatch<React.SetStateAction<ActivityShoppingCartItem[]>>;
   accommodationShoppingCartItem: AccommodationShoppingCartItem;
   setAccommodationShoppingCartItem: (item: AccommodationShoppingCartItem) => void;
   selectedDates: { startDate: Date; endDate: Date };
-  requestPlaceCall: (request: "accommodation" | "activity") => void;
+  requestCall: (request: CALL_ACCOMMODATION | CALL_ACTIVITY | GENERATE_ROUTE) => void;
 }
 
 const formatTime = (value: string | number): string => {
@@ -48,14 +53,9 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
   accommodationShoppingCartItem,
   setAccommodationShoppingCartItem,
   selectedDates,
-  requestPlaceCall
+  requestCall
 }) => {
   const [grouping, setGrouping] = useState<"place" | "date">("place");
-  const [selectedItem, setSelectedItem] = useState<
-    ActivityShoppingCartItem | AccommodationShoppingCartItem | null
-  >(null);
-  const [selectedType, setSelectedType] = useState<"accommodation" | "activity">("accommodation")
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleGroupChange = (
     _: React.MouseEvent<HTMLElement>,
@@ -66,51 +66,77 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
     }
   };
 
-  const handleCardClick = (
-    item_id: string,
-    type: "activity" | "accommodation"
-  ) => {
-    setSelectedType(type)
-    if (type === "accommodation") {
-      setSelectedItem(accommodationShoppingCartItem);
-    } else {
-      let item = activityShoppingCartItem.find((item) => item.item.id === item_id)
-      if (item) setSelectedItem(item);
-    }
+  const [activityDialogOpen, setActivityDialogOpen] = useState(false);
+  const [accommodationDialogOpen, setAccommodationDialogOpen] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [selectedAccommodation, setSelectedAccommodation] = useState<Accommodation | null>(null);
 
-    setDialogOpen(true);
+  const handleCloseActivityDialog = () => {
+    setActivityDialogOpen(false);
+    setSelectedActivity(null);
   };
 
-  const handleDialogClose = () => {
-    setDialogOpen(false);
-    setSelectedItem(null);
+  const handleCloseAccommodationDialog = () => {
+    setAccommodationDialogOpen(false);
+    setSelectedAccommodation(null);
   };
 
-  // Group activities by date and flatten each zone using its first range.
+  const handleSelectActivity = (activity: Activity) => {
+    setActivityDialogOpen(true);
+    setSelectedActivity(activity);
+    handleCloseAccommodationDialog()
+  };
+
+  const handleSelectAccommodation = (accommodation: Accommodation) => {
+    setAccommodationDialogOpen(true);
+    setSelectedAccommodation(accommodation);
+    handleCloseActivityDialog()
+  };
+
+
   const groupedActivitiesByDate = activityShoppingCartItem.reduce(
     (acc, cartItem) => {
       cartItem.zones.forEach((zone) => {
         const dateStr = zone.date.toISOString().split("T")[0];
-        // Use the first range from the zone, if available.
-        const firstRange = zone.ranges[0] || { start: 0, end: 0 };
-        const flattenedZone = {
-          date: zone.date,
-          start: firstRange.start,
-          end: firstRange.end,
-          stayTime: cartItem.stayTime
-        };
 
-        if (!acc[dateStr]) acc[dateStr] = [];
-        acc[dateStr].push({ item: cartItem.item, zone: flattenedZone });
+        // Iterate through all ranges for the current zone and display them all
+        zone.ranges.forEach((range) => {
+          const flattenedZone = {
+            date: zone.date,
+            start: range.start,
+            end: range.end,
+            stayTime: cartItem.stayTime,
+          };
+
+          if (!acc[dateStr]) acc[dateStr] = [];
+          acc[dateStr].push({ item: cartItem.item, zone: flattenedZone });
+        });
       });
+
+      // Sort by start time, then end time, then name
+      Object.keys(acc).forEach((dateStr) => {
+        acc[dateStr].sort((a, b) => {
+          // Compare start time
+          if (a.zone.start !== b.zone.start) {
+            return a.zone.start - b.zone.start;
+          }
+          // If start times are equal, compare end time
+          if (a.zone.end !== b.zone.end) {
+            return a.zone.end - b.zone.end;
+          }
+          // If both start and end times are equal, compare by name
+          return a.item.name.localeCompare(b.item.name);
+        });
+      });
+
       return acc;
     },
     {} as Record<string, FlattenedShoppingCartItem[]>
   );
 
   return (
-    <Box sx={{ width: "100%", padding: "20px" }}>
-      {/* Toggle between grouping */}
+    <Box sx={{ width: "100%", height: "100%", padding: "20px"}}>
+        {/* Toggle between grouping */}
       <Box sx={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
         <ToggleButtonGroup
           value={grouping}
@@ -142,7 +168,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
                 boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
                 overflow: "hidden",
               }}
-              onClick={() => handleCardClick(accommodationShoppingCartItem.item.id, "accommodation")}
+              onClick={() => handleSelectAccommodation(accommodationShoppingCartItem.item)}
             >
               <Avatar
                 src={accommodationShoppingCartItem.item.image}
@@ -184,7 +210,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
               <Button
                 variant="outlined"
                 sx={{ marginTop: "10px" }}
-                onClick={() => requestPlaceCall("accommodation")}
+                onClick={() => requestCall(CALL_ACCOMMODATION)}
               >
                 Select Accommodation
               </Button>
@@ -216,7 +242,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
                           boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
                           overflow: "hidden",
                         }}
-                        onClick={() => handleCardClick(groupedItem.item.id, "activity")}
+                        onClick={() => handleSelectActivity(groupedItem.item)}
                       >
                         <Avatar
                           src={groupedItem.item.image}
@@ -268,7 +294,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
                     boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
                     overflow: "hidden",
                   }}
-                  onClick={() => handleCardClick(item.item.id, "activity")}
+                  onClick={() => handleSelectActivity(item.item)}
                 >
                   <Avatar
                     src={item.item.image}
@@ -311,7 +337,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
               <Typography variant="body2" color="text.secondary">
                 No activities selected.
               </Typography>
-              <Button variant="outlined" sx={{ marginTop: "10px" }} onClick={() => requestPlaceCall("activity")}>
+              <Button variant="outlined" sx={{ marginTop: "10px" }} onClick={() => requestCall(CALL_ACTIVITY)}>
                 Select Activities
               </Button>
             </Box>
@@ -319,28 +345,95 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
         </Grid>
       )}
 
+      
+
+<Box
+        sx={{
+          position: 'sticky',
+          bottom: 0,
+          width: '100%',
+          padding: '20px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => {
+            requestCall(GENERATE_ROUTE)
+          }}
+          sx={{
+            width: '200px',
+            padding: '10px 20px',
+            fontSize: '16px',
+          }}
+        >
+          Checkout
+        </Button>
+      </Box>
+
+
+
       {/* Information Dialog */}
-      {selectedItem && (
-        <Dialog open={dialogOpen} onClose={handleDialogClose} fullWidth maxWidth="md">
-          {selectedType === "activity" ? (
-            <ActivityInformation
-              data={selectedItem.item}
-              selectedDates={selectedDates}
-              shoppingCartItem={activityShoppingCartItem}
-              setShoppingCartItem={setActivityShoppingCartItem}
-              handleFinished={handleDialogClose}
-            />
-          ) : (
-            <AccommodationInformation
-              data={selectedItem.item}
-              shoppingCartItem={accommodationShoppingCartItem}
-              setShoppingCartItem={setAccommodationShoppingCartItem}
-              selectedDates={selectedDates}
-              handleFinished={handleDialogClose}
-            />
-          )}
-        </Dialog>
-      )}
+      {/* activity dialog */}
+      <Dialog open={activityDialogOpen} onClose={handleCloseActivityDialog} fullWidth maxWidth="md">
+        <DialogContent>
+          {/* Close Button */}
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: -2 }}>
+            <IconButton onClick={handleCloseActivityDialog} sx={{ color: "#000", padding: 0 }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          {/* Title based on Type */}
+          <Typography variant="h5" sx={{ mb: 2, fontWeight: "bold" }}>
+            Activity Details
+          </Typography>
+
+          {/* Information Section */}
+          <ActivityInformation
+            data={selectedActivity}
+            selectedDates={selectedDates}
+            shoppingCartItem={activityShoppingCartItem}  // Correct for activities
+            setShoppingCartItem={setActivityShoppingCartItem}
+            handleFinished={handleCloseActivityDialog}
+          />
+
+
+        </DialogContent>
+      </Dialog>
+
+      {/* activity dialog */}
+      <Dialog open={accommodationDialogOpen} onClose={handleCloseAccommodationDialog} fullWidth maxWidth="md">
+        <DialogContent>
+          {/* Close Button */}
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: -2 }}>
+            <IconButton onClick={handleCloseAccommodationDialog} sx={{ color: "#000", padding: 0 }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          {/* Title based on Type */}
+          <Typography variant="h5" sx={{ mb: 2, fontWeight: "bold" }}>
+            Accommodation Details
+          </Typography>
+
+          {/* Information Section */}
+          <AccommodationInformation
+            data={selectedAccommodation}
+            selectedDates={selectedDates} // Pass correct dates
+            shoppingCartItem={accommodationShoppingCartItem}  // Correct prop for accommodations
+            setShoppingCartItem={setAccommodationShoppingCartItem}
+            handleFinished={handleCloseAccommodationDialog}
+          />
+
+        </DialogContent>
+      </Dialog>
+
+      
+
     </Box>
   );
 };

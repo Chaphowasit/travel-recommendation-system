@@ -1,21 +1,21 @@
 import React, { useEffect, useRef } from 'react';
-import { Box, Paper, Typography } from '@mui/material';
+import { Box, Divider, Paper, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import ReactMarkdown from 'react-markdown'; // Import Markdown parser
 import remarkGfm from 'remark-gfm'; // For GitHub-flavored Markdown (optional)
 import { Message } from '../../utils/DataType/message';
-import { ActivityShoppingCartItem, AccommodationShoppingCartItem } from '../../utils/DataType/shoppingCart';
-import AccommodationCard from '../Suggestions/AccommodationCard.component';
-import ActivityCard from '../Suggestions/ActivityCard.component';
+import AccommodationCard from '../PlaceInformations/AccommodationCard.component';
+import ActivityCard from '../PlaceInformations/ActivityCard.component';
+import { Accommodation, Activity } from '../../utils/DataType/place';
 
 interface ChatWindowProps {
   messages: Message[];
-  setActivityShoppingCartItem: React.Dispatch<React.SetStateAction<ActivityShoppingCartItem[]>>;
-  setAccommodationShoppingCartItem: React.Dispatch<React.SetStateAction<AccommodationShoppingCartItem>>;
+  setActivity: (activity: Activity) => void;
+  setAccommodation: (accommodation: Accommodation) => void;
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ messages, setActivity, setAccommodation }) => {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const chatWindowRef = useRef<HTMLDivElement>(null);
@@ -62,7 +62,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
         >
           <Paper
             sx={{
-              padding: 1,
+              padding: 2,
               backgroundColor: message.sender === 'user' ? '#daf8da' : '#f1f1f1',
               maxWidth: isSmallScreen ? '100%' : '90%',
               width: 'auto',
@@ -73,16 +73,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
             {/* Render Markdown content */}
             <ReactMarkdown children={message.text} remarkPlugins={[remarkGfm]} />
 
+            {(message.accommodations || message.activities) && (<Divider/>)}
+
             {/* Display Accommodations */}
             {message.accommodations && message.accommodations.length > 0 && (
               <Box sx={{ marginTop: 2 }}>
-                <Typography variant="h6" sx={{ marginBottom: 1 }}>Accommodations</Typography>
+                <Typography variant="h6" fontWeight={"bold"}>Accommodations</Typography>
                 <Box
                   sx={{
                     display: 'flex',
                     overflowX: 'auto',
                     maxWidth: '100%',
-                    paddingBottom: 1,
                     '&::-webkit-scrollbar': {
                       height: '6px',
                     },
@@ -93,6 +94,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
                     '&::-webkit-scrollbar-track': {
                       backgroundColor: '#f0f0f0',
                     },
+                    padding: 2,
                   }}
                 >
                   {message.accommodations.map((accommodation) => (
@@ -101,7 +103,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
                         accommodation={accommodation}
                         onClick={() => {
                           // Handle the accommodation click
-                          console.log('Accommodation clicked:', accommodation);
+                          setAccommodation(accommodation);
                         }}
                       />
                     </Box>
@@ -113,13 +115,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
             {/* Display Activities */}
             {message.activities && message.activities.length > 0 && (
               <Box sx={{ marginTop: 2 }}>
-                <Typography variant="h6" sx={{ marginBottom: 1 }}>Activities</Typography>
+                <Typography variant="h6" fontWeight={"bold"}>Activities</Typography>
                 <Box
                   sx={{
                     display: 'flex',
                     overflowX: 'auto',
                     maxWidth: '100%',
-                    paddingBottom: 1,
                     '&::-webkit-scrollbar': {
                       height: '6px',
                     },
@@ -130,6 +131,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
                     '&::-webkit-scrollbar-track': {
                       backgroundColor: '#f0f0f0',
                     },
+                    padding: 2,
                   }}
                 >
                   {message.activities.map((activity) => (
@@ -138,7 +140,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages }) => {
                         activity={activity}
                         onClick={() => {
                           // Handle the activity click
-                          console.log('Activity clicked:', activity);
+                          setActivity(activity);
                         }}
                       />
                     </Box>

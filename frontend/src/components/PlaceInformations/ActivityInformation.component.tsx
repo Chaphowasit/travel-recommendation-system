@@ -14,13 +14,14 @@ import { Activity } from "../../utils/DataType/place";
 import { ActivityShoppingCartItem, ActivityZone } from "../../utils/DataType/shoppingCart";
 import { dayjsStartDate, formatTime, generateDateRange } from "../../utils/time";
 import MultiRangeSelectBar from "../utils/MultiRangeSelectBar";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 
 interface ActivityInformationProps {
-  data: Activity;
+  data: Activity | null;
   selectedDates: { startDate: Date | null; endDate: Date | null };
   shoppingCartItem: ActivityShoppingCartItem[]; // Initial shopping cart data
-  setShoppingCartItem: (items: ActivityShoppingCartItem[]) => void; // Function to update the shopping cart
+  setShoppingCartItem:  React.Dispatch<React.SetStateAction<ActivityShoppingCartItem[]>>; // Function to update the shopping cart
   handleFinished: () => void;
 }
 
@@ -31,6 +32,8 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   setShoppingCartItem,
   handleFinished,
 }) => {
+  if (data === null) return;
+
   const [zones, setZones] = useState<ActivityZone[]>([]);
   const [stayHours, setStayHours] = useState<number>(8); // Default stay time
 
@@ -89,6 +92,15 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
     updatedCart.push({ item: data, zones, stayTime: stayHours });
 
     setShoppingCartItem(updatedCart);
+    handleFinished();
+  };
+
+  const handleRemoveFromCartClick = () => {
+    setShoppingCartItem((oldItem) => {
+      return oldItem.filter((item) => {
+        item.item.id !== data.id
+      })
+    });
     handleFinished();
   };
 
@@ -217,6 +229,11 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
         >
           Save
         </Button>
+        {shoppingCartItem.some((item) => item.item.id === data.id) && (
+          <Button onClick={handleRemoveFromCartClick} color="error" variant="contained" startIcon={<DeleteIcon />}>
+            Remove
+          </Button>
+        )}
       </Box>
 
     </Box>
