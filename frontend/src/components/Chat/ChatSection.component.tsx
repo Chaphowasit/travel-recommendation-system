@@ -22,6 +22,67 @@ interface ChatSectionProps {
     clearRequestCallValue: () => void;
 }
 
+const convertToVrpPayload = (
+    activityShoppingCartItems: ActivityShoppingCartItem[], 
+    accommodationShoppingCartItem: AccommodationShoppingCartItem
+) => {
+    // Convert accommodation
+    const accommodation = accommodationShoppingCartItem; // Assuming there is only one accommodation item
+    const sleepTimes = accommodation.zones.map(zone => {
+        // Calculate the morning and evening times from the ranges
+        const morning = zone.ranges[0].end;
+        const evening = zone.ranges[1].start;
+        const sleepTime = zone.sleepTime; // Calculating the sleep time
+        
+        return { morning, evening, sleepTime };
+    });
+
+    // Convert activities
+    const activities = activityShoppingCartItems.reduce((result, item) => {
+        item.zones.forEach(zone => {
+            // Group by date, and then collect activities for that date
+            const dateKey = zone.date.toISOString(); // Use ISO string to uniquely identify the date
+
+            // Find or initialize the list for that date
+            if (!result[dateKey]) {
+                result[dateKey] = [];
+            }
+
+            // Create the visit times for the activity on that date
+            const visitTimes = zone.ranges.map(range => ({
+                start: range.start,
+                end: range.end
+            }));
+
+            // Add the activity for this date
+            result[dateKey].push({
+                id: item.item.id,
+                visit_time: visitTimes
+            });
+        });
+
+        return result;
+    }, {} as Record<string, { id: string, visit_time: { start: number, end: number }[] }[]>);
+
+    // Convert the activities object into an array of lists (one list per date)
+    const activitiesArray = Object.values(activities);
+
+    // Convert stay times
+    const activitiesStayTime: { [key: string]: number } = {};
+    activityShoppingCartItems.forEach(item => {
+        activitiesStayTime[item.item.id] = item.stayTime;
+    });
+
+    return {
+        accommodation: {
+            id: accommodation.item.id,
+            sleepTimes: sleepTimes
+        },
+        activities: activitiesArray,
+        activities_stayTime: activitiesStayTime
+    };
+}
+
 const ChatSection: React.FC<ChatSectionProps> = ({ 
     messages, 
     setMessages, 
@@ -34,7 +95,14 @@ const ChatSection: React.FC<ChatSectionProps> = ({
     clearRequestCallValue }) => {
     const [loading, setLoading] = useState<boolean>(false);
 
-    const onSend = useCallback((text: string) => {
+    const handleSendMessage = (text: string) => {
+        switch (text) {
+            case GENERATE_ROUTE_MESSAGE: onSend(GENERATE_ROUTE_MESSAGE, convertToVrpPayload(activityShoppingCartItem, accommodationShoppingCartItem)); break;
+            default: onSend(text)
+        }
+    }
+
+    const onSend = useCallback((text: string, note_payload?: Object) => {
         if (loading) return;
 
         setMessages((prevMessages) => [
@@ -44,17 +112,20 @@ const ChatSection: React.FC<ChatSectionProps> = ({
 
         setLoading(true);
 
-        sendMessage(text)
+        sendMessage(text, note_payload)
             .then((response) => {
                 setMessages((prevMessages) => [
                     ...prevMessages,
                     {
                         sender: 'bot',
                         text: response.data?.user_message || 'Sorry, I didn\'t get that.',
-                        accommodations: response.data.accommodations,
-                        activities: response.data.activities
+                        accommodations: response.data?.accommodations,
+                        activities: response.data?.activities,
+                        route: response.data?.route
                     },
                 ]);
+
+                console.log(response.data?.route)
             })
             .catch((error) => {
                 console.error('Error sending message:', error);
@@ -74,9 +145,9 @@ const ChatSection: React.FC<ChatSectionProps> = ({
         if (!requestCallValue) return;
         
         switch (requestCallValue) {
-            case CALL_ACCOMMODATION: onSend(CALL_ACCOMMODATION_MESSAGE); break;
-            case CALL_ACTIVITY: onSend(CALL_ACTIVITY_MESSAGE); break;
-            case GENERATE_ROUTE: onSend(GENERATE_ROUTE_MESSAGE); break;
+            case CALL_ACCOMMODATION: handleSendMessage(CALL_ACCOMMODATION_MESSAGE); break;
+            case CALL_ACTIVITY: handleSendMessage(CALL_ACTIVITY_MESSAGE); break;
+            case GENERATE_ROUTE: handleSendMessage(GENERATE_ROUTE_MESSAGE); break;
         }
 
         clearRequestCallValue()
@@ -119,7 +190,7 @@ const ChatSection: React.FC<ChatSectionProps> = ({
                     setActivity={handleSelectActivity}
                     setAccommodation={handleSelectAccommodation}
                 />
-                <InputBox onSend={onSend} loading={loading} />
+                <InputBox onSend={handleSendMessage} loading={loading} />
             </Box>
 
             {/* activity dialog */}

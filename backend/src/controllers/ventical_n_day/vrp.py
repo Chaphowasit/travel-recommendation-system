@@ -32,6 +32,8 @@ class VRPSolver:
         data["time_matrix"] = duration_matrix
         data["time_services"] = self.data_loader.get_durations(place_ids)
         
+        print(data)
+        
         return data
 
     def add_time_windows_constraints(self, time_dimension):
@@ -128,12 +130,14 @@ class VRPSolver:
 
         def time_callback(from_index, to_index):
             from_node, to_node = self.manager.IndexToNode(from_index), self.manager.IndexToNode(to_index)
-            return self.data["time_matrix"][from_node][to_node] + self.data["time_services"][from_node]
+            travel_time = self.data["time_matrix"][from_node][to_node] + self.data["time_services"][from_node]
+            print(f"Travel time from {from_node} to {to_node}: {travel_time}")
+            return travel_time
 
         transit_callback_index = self.routing.RegisterTransitCallback(time_callback)
         self.routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
 
-        self.routing.AddDimension(transit_callback_index, 24, 96 * self.data["days"], False, "Time")
+        self.routing.AddDimension(transit_callback_index, 96, 96 * self.data["days"], False, "Time")
         time_dimension = self.routing.GetDimensionOrDie("Time")
         self.add_time_windows_constraints(time_dimension)
         
@@ -143,10 +147,12 @@ class VRPSolver:
             if i < self.data["days"]:
                 self.routing.AddToAssignment(self.routing.NextVar(index))
             else:
-                self.routing.AddDisjunction([index], 1000)
+                self.routing.AddDisjunction([index], 500)
 
         search_params = pywrapcp.DefaultRoutingSearchParameters()
-        search_params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+        search_params.solution_limit = 3000  # Set solution limit
+        search_params.time_limit.seconds = 60  # Set a time limit in seconds
+        search_params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC
         self.solution = self.routing.SolveWithParameters(search_params)
 
         if self.solution:
@@ -157,3 +163,46 @@ class VRPSolver:
             return computed_routes
         else:
             print("No solution found!")
+            # Add debugging information:
+            print(f"Routing status: {self.routing.status()}")
+
+
+# {
+#     'days': 2, 
+#     'place_ids': ['H0303', 'H0303', 'A0736', 'A2291', 'A0265', 'A2103', 'A0130', 'A0247', 'A0243', 'A0206', 'A0597', 'A0234', 'A0319', 'A0381'], 
+#     'time_windows': [
+#         [(0, 33), (160, 192)], 
+#         [(61, 80)], 
+#         [(40, 45), (63, 65), (136, 136), (158, 161)], 
+#         [(0, 16), (45, 105), (134, 150), (180, 180)], 
+#         [(32, 32), (128, 128)], 
+#         [(0, 54), (80, 116), (153, 176)], 
+#         [(0, 0), (53, 123), (160, 168)], 
+#         [(40, 40), (53, 60), (128, 144), (154, 156)], 
+#         [(28, 69), (146, 146)], 
+#         [(0, 24), (64, 96), (138, 165)], 
+#         [(36, 36), (132, 133)], 
+#         [(0, 0), (64, 116), (161, 170)], 
+#         [(38, 45), (53, 53), (61, 67), (134, 146), (154, 163)], 
+#         [(36, 62), (132, 158)], 
+#     ]
+#     'time_matrix': [
+#         [0, 0, 1, 1, 13, 1, 2, 8, 6, 1, 3, 4, 6, 3], 
+#         [0, 0, 1, 1, 13, 1, 2, 8, 6, 1, 3, 4, 6, 3], 
+#         [1, 1, 0, 1, 13, 1, 2, 8, 6, 1, 3, 5, 6, 4], 
+#         [1, 1, 1, 0, 13, 1, 2, 8, 6, 1, 3, 5, 6, 4], 
+#         [11, 11, 12, 12, 0, 11, 12, 11, 8, 12, 10, 9, 7, 9], 
+#         [1, 1, 1, 1, 13, 0, 2, 8, 6, 2, 3, 4, 6, 3], 
+#         [2, 2, 1, 2, 13, 2, 0, 8, 6, 2, 3, 5, 6, 4], 
+#         [8, 8, 8, 8, 13, 8, 8, 0, 6, 9, 6, 6, 6, 5], 
+#         [5, 5, 6, 6, 9, 5, 6, 6, 0, 6, 4, 3, 2, 3], 
+#         [1, 1, 1, 1, 14, 2, 2, 8, 7, 0, 4, 5, 6, 4], 
+#         [3, 3, 3, 4, 11, 3, 4, 6, 4, 4, 0, 3, 4, 2], 
+#         [4, 4, 4, 5, 10, 4, 5, 5, 2, 5, 3, 0, 3, 2], 
+#         [5, 5, 6, 6, 8, 5, 6, 5, 2, 6, 4, 3, 0, 3], 
+#         [3, 3, 4, 4, 11, 3, 4, 6, 4, 4, 2, 2, 4, 0]
+#     ], 
+#     'time_services': [0, 40, 11, 12, 36, 16, 24, 8, 15, 27, 20, 22, 7, 14], 
+#     'num_vehicles': 1, 
+#     'depot': 0
+# }

@@ -219,6 +219,6 @@ class DataLoader:
             if place in self.data["activities_stayTime"]:
                 result.append(self.data["activities_stayTime"][place])
             elif place == self.accommodation["id"]:
-                result.append(0 if i == 0 else sleep_times[i - 1]["sleepTime"])
+                result.append(sleep_times[0]["morning"] if i == 0 else sleep_times[i - 1]["sleepTime"])
 
         return result

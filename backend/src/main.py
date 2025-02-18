@@ -50,6 +50,15 @@ def send_message():
 
         message = data["message"]
         logger.debug(f"User message received: {message}")
+        
+        if message == "Generate route from my note":
+            if "note_payload" not in data:
+                logger.warning("No places note provided in request")
+                return jsonify({"error": "No place provided"}), 400
+
+            vrp_solver = VRPSolver(data["note_payload"])
+            vrp_result = vrp_solver.solve()
+            return jsonify({"user_message": "Here's your optimize traveling route!!!", "route": vrp_result})
 
         intent_result = chatbot.classify_intent(message)
         logger.debug(f"Intent classified as: {intent_result}")
@@ -86,17 +95,59 @@ def send_message():
         return jsonify({"error": "An error occurred"}), 500
 
 
-# Vehicle Routing Problem (VRP) Route Generation
-@app.route('/vrp/generate-route', methods=['POST', 'OPTIONS'])
-def generate_route():
-    logger.info("VRP Generate Route endpoint accessed")
-    if request.method == 'OPTIONS':
-        logger.info("Handling OPTIONS preflight request")
-        return '', 204  # Preflight response for CORS
-
+# fetch data from mariadb
+@app.route("/fetch-mariadb", methods=["GET"])
+def fetch_mariadb():
     try:
-        # Sample hardcoded payload for testing
-        vrp_payload = {
+        # Get the 'place_ids' parameter from the query string
+        place_ids = request.args.get("place_ids")
+        
+        # Ensure place_ids is provided
+        if not place_ids:
+            return jsonify({"error": "place_ids parameter is required"}), 400
+
+        # Split the place_ids string by commas to create a list of strings
+        place_ids_list = place_ids.split(",")
+
+        # Fetch place details from the MariaDB_Adaptor
+        place_details, business_hours = MariaDB_Adaptor.fetch_place_details(
+            mariadb_adaptor, place_ids=place_ids_list
+        )
+
+        # Initialize the transformed data structure as a list
+        result = []
+
+        # Helper function to format business hours
+        def format_business_hours(start_time, end_time):
+            return {"start": start_time, "end": end_time}
+
+        # Transform and rearrange fields
+        for place_id, details in place_details.items():
+            entry = {
+                "id": place_id,
+                "name": details["name"],
+                "description": details["about_and_tags"],
+                "tag": details["about_and_tags"],
+                "business_hour": format_business_hours(
+                    details["start_time_int"], details["end_time_int"]
+                ),
+                "image": details["image_url"],
+            }
+
+            # Append entry to the list
+            result.append(entry)
+
+        # Return the transformed data as a JSON array
+        print(result)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+
+vrp_payload = {
             "accommodation": {
                 "id": "H0021",
                 "sleepTimes": [
@@ -214,67 +265,6 @@ def generate_route():
                 "A0234": 11,
             }
         }
-
-        logger.debug(f"VRP payload: {vrp_payload}")
-        vrp_solver = VRPSolver(vrp_payload)
-        vrp_result = vrp_solver.solve()
-        logger.info(f"VRP Result: {vrp_result}")
-        return jsonify(vrp_result)
-
-    except Exception as e:
-        logger.error(f"Error in generate_route: {e}", exc_info=True)
-        return jsonify({"error": "An error occurred"}), 500
-
-
-# fetch data from mariadb
-@app.route("/fetch-mariadb", methods=["GET"])
-def fetch_mariadb():
-    try:
-        # Get the 'place_ids' parameter from the query string
-        place_ids = request.args.get("place_ids")
-        
-        # Ensure place_ids is provided
-        if not place_ids:
-            return jsonify({"error": "place_ids parameter is required"}), 400
-
-        # Split the place_ids string by commas to create a list of strings
-        place_ids_list = place_ids.split(",")
-
-        # Fetch place details from the MariaDB_Adaptor
-        place_details, business_hours = MariaDB_Adaptor.fetch_place_details(
-            mariadb_adaptor, place_ids=place_ids_list
-        )
-
-        # Initialize the transformed data structure as a list
-        result = []
-
-        # Helper function to format business hours
-        def format_business_hours(start_time, end_time):
-            return {"start": start_time, "end": end_time}
-
-        # Transform and rearrange fields
-        for place_id, details in place_details.items():
-            entry = {
-                "id": place_id,
-                "name": details["name"],
-                "description": details["about_and_tags"],
-                "tag": details["about_and_tags"],
-                "business_hour": format_business_hours(
-                    details["start_time_int"], details["end_time_int"]
-                ),
-                "image": details["image_url"],
-            }
-
-            # Append entry to the list
-            result.append(entry)
-
-        # Return the transformed data as a JSON array
-        print(result)
-        return jsonify(result)
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 
 if __name__ == "__main__":
     # Initialize dependencies

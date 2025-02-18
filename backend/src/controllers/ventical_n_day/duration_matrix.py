@@ -154,7 +154,7 @@ class DurationMatrix:
             self.adaptor.upsert_durations(pairs)
             logging.info("Inserted/Updated duration pairs into the database.")
             
-            [(e[0], e[1], transform_sec_to_int(e[2])) for e in pairs]
+            pairs = [(e[0], e[1], transform_sec_to_int(e[2])) for e in pairs]
             
             filled_matrix = self._populate_known_durations(filled_matrix, pairs, list(self.locations.keys()))
             logging.debug("Updated the matrix with the newly fetched durations.")

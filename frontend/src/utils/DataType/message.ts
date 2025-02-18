@@ -1,4 +1,5 @@
 import { Accommodation, Activity } from "./place";
+import { RouteData } from "./route";
 
 export const CALL_ACTIVITY = "activity"
 export const CALL_ACCOMMODATION = "accommodation"
@@ -17,5 +18,6 @@ export interface Message {
     sender: string;
     text: string;
     accommodations?: Accommodation[],  
-    activities?: Activity[]
+    activities?: Activity[],
+    route?: RouteData
 }

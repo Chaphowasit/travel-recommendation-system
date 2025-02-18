@@ -9,8 +9,8 @@ const axiosInstance = axios.create({
     }
 });
 
-export const sendMessage = (text: string) =>
-    axiosInstance.post('/sendMessage', { "message": text })
+export const sendMessage = (text: string, note_payload?: Object) =>
+    axiosInstance.post('/sendMessage', { "message": text, note_payload })
 
 export const generateRoute = (intervals: any) =>
     axiosInstance.post('/vrp/generate-route', {intervals})

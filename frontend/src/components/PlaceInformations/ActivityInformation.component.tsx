@@ -103,9 +103,9 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
 
   const handleRemoveFromCartClick = () => {
     setShoppingCartItem((oldItem) => {
-      return oldItem.filter((item) => {
-        item.item.id !== data.id
-      })
+      return oldItem.filter((item) => 
+        item.item.id === data.id
+      )
     });
     handleFinished();
   };

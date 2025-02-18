@@ -135,8 +135,8 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
   );
 
   return (
-    <Box sx={{ width: "100%", height: "100%", padding: "20px"}}>
-        {/* Toggle between grouping */}
+    <Box sx={{ width: "100%", height: "100%", padding: "20px" }}>
+      {/* Toggle between grouping */}
       <Box sx={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
         <ToggleButtonGroup
           value={grouping}
@@ -345,34 +345,36 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
         </Grid>
       )}
 
-      
 
-<Box
-        sx={{
-          position: 'sticky',
-          bottom: 0,
-          width: '100%',
-          padding: '20px',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => {
-            requestCall(GENERATE_ROUTE)
-          }}
+      {accommodationShoppingCartItem.item.id !== "-1" && activityShoppingCartItem.length >= 0 && (
+        <Box
           sx={{
-            width: '200px',
-            padding: '10px 20px',
-            fontSize: '16px',
+            position: 'sticky',
+            bottom: 0,
+            width: '100%',
+            padding: '20px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
           }}
         >
-          Checkout
-        </Button>
-      </Box>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              requestCall(GENERATE_ROUTE)
+            }}
+            sx={{
+              width: '200px',
+              padding: '10px 20px',
+              fontSize: '16px',
+            }}
+          >
+            Checkout
+          </Button>
+        </Box>
+      )}
+
 
 
 
@@ -432,7 +434,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
         </DialogContent>
       </Dialog>
 
-      
+
 
     </Box>
   );
