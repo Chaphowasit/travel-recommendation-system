@@ -74,19 +74,25 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   // Calculate the minimum range duration, only if zones are populated
   const getMinRangeDuration = (zonesToCheck: ActivityZone[] = zones) => {
     if (zonesToCheck.length === 0) return 0; // Return 0 if zones are not populated yet
-
-    const durations = zonesToCheck.map((zone) =>
-      zone.ranges.map((range) => range.end - range.start)
-    ).flat();
+  
+    const durations = zonesToCheck
+      .map((zone) => zone.ranges.map((range) => range.end - range.start))
+      .flat();
+  
+    if (durations.length === 0) return 0; // Handle the case where durations array is empty
 
     return Math.min(...durations);
   };
+  
 
   const handleStayHoursChange = (value: number) => {
     setStayHours(value);
   };
 
   const handleAddToCartClick = () => {
+    if (getMinRangeDuration() <= 0) {
+      return;
+    }
 
     const updatedCart = shoppingCartItem.filter((cartItem) => cartItem.item.id !== data.id);
     updatedCart.push({ item: data, zones, stayTime: stayHours });
@@ -197,11 +203,12 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
         <FormControl fullWidth>
           <InputLabel>Stay Hours</InputLabel>
           <Select
-            value={stayHours}
+            value={stayHours || 1}
             onChange={(e) => handleStayHoursChange(Number(e.target.value))}
             label="Stay Hours"
+            disabled = {getMinRangeDuration() <= 0}
           >
-            {[...Array(getMinRangeDuration())].map((_, index) => (
+            {[...Array(getMinRangeDuration() > 0 ? getMinRangeDuration() : 1)].map((_, index) => (
               <MenuItem key={index + 1} value={index + 1}>
                 {formatTime(index + 1)} hrs
               </MenuItem>
@@ -226,6 +233,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
           color="primary"
           variant="contained"
           startIcon={<AddShoppingCartIcon />}
+          disabled={getMinRangeDuration() <= 0}
         >
           Save
         </Button>
