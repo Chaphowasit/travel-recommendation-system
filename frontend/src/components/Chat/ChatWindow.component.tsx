@@ -8,6 +8,8 @@ import { Message } from '../../utils/DataType/message';
 import AccommodationCard from '../PlaceInformations/AccommodationCard.component';
 import ActivityCard from '../PlaceInformations/ActivityCard.component';
 import { Accommodation, Activity } from '../../utils/DataType/place';
+import DisplaySchedule from '../Schedule/DisplaySchedule.component';
+import { RouteData } from '../../utils/DataType/route';
 
 interface ChatWindowProps {
   messages: Message[];
@@ -148,6 +150,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, setActivity, setAccom
                 </Box>
               </Box>
             )}
+
+            {message.route && (<>
+              <Divider/>
+
+              <Box sx={{ marginTop: 2 }}>
+              <DisplaySchedule routeData={message.route} setRouteData={function (routeData: RouteData): void {
+                throw new Error('Function not implemented.');
+              } }/>
+            </Box>
+            </>)}
+            
           </Paper>
         </Box>
       ))}

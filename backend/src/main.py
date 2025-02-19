@@ -7,6 +7,7 @@ from adapters.MariaDB import MariaDB_Adaptor
 from controllers.chatbot import Chatbot
 from controllers.interface import fetch_place_detail
 from common.mariadb_schema import Base
+from common.utils import rename_field
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -102,37 +103,34 @@ def fetch_mariadb():
         # Get the 'place_ids' parameter from the query string
         place_ids = request.args.get("place_ids")
         
+        print(place_ids)
+        
         # Ensure place_ids is provided
         if not place_ids:
             return jsonify({"error": "place_ids parameter is required"}), 400
 
         # Split the place_ids string by commas to create a list of strings
         place_ids_list = place_ids.split(",")
+        
+        
 
         # Fetch place details from the MariaDB_Adaptor
-        place_details, business_hours = MariaDB_Adaptor.fetch_place_details(
-            mariadb_adaptor, place_ids=place_ids_list
+        accommodation_place_details = mariadb_adaptor.fetch_accommodations(
+            place_ids=place_ids_list
+        )
+        
+        activity_place_details = mariadb_adaptor.fetch_activities(
+            place_ids=place_ids_list
         )
 
         # Initialize the transformed data structure as a list
         result = []
 
-        # Helper function to format business hours
-        def format_business_hours(start_time, end_time):
-            return {"start": start_time, "end": end_time}
-
         # Transform and rearrange fields
-        for place_id, details in place_details.items():
-            entry = {
-                "id": place_id,
-                "name": details["name"],
-                "description": details["about_and_tags"],
-                "tag": details["about_and_tags"],
-                "business_hour": format_business_hours(
-                    details["start_time_int"], details["end_time_int"]
-                ),
-                "image": details["image_url"],
-            }
+        for place_id in place_ids_list:
+            data = activity_place_details.get(place_id, None) or accommodation_place_details.get(place_id, None)
+            
+            entry = rename_field(place_id, data)
 
             # Append entry to the list
             result.append(entry)

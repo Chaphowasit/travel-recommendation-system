@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import ScheduleTable from "./ScheduleTable.component";
 import EditPlaceModal from "./EditPlaceModal.component";
-import AddPlaceDropZone from "./AddPlaceDropZone.component";
 import { fetchMariaDB } from "../../utils/api";
 
 // Generate 15-minute intervals
@@ -214,11 +213,7 @@ const DisplaySchedule: React.FC<DisplayScheduleProps> = ({ routeData }) => {
   const [schedules, setSchedules] = useState<{
     [placeId: string]: { item: { name: string }; slots: number[] }[];
   }[]>([]);
-  const [newPlace, setNewPlace] = useState<{
-    id: string;
-    name: string;
-    business_hour: { start: number; end: number };
-  } | null>(null);
+
   const [editingPlace, setEditingPlace] = useState<{
     dayIndex: number
     placeId: string;
@@ -226,58 +221,6 @@ const DisplaySchedule: React.FC<DisplayScheduleProps> = ({ routeData }) => {
     intervals: { start: number; end: number }[];
     error?: string;
   } | null>(null);
-
-  const handleDropToSchedule = (
-    item: {
-      id: string;
-      name: string;
-      business_hour: { start: number; end: number };
-    },
-    dayIndex: number
-  ) => {
-    setSchedules((prevSchedules) => {
-      const updatedSchedules = [...prevSchedules];
-      const daySchedule = updatedSchedules[dayIndex] || {};
-
-      const { id, name, business_hour } = item;
-      const startSlot = business_hour.start * 4;
-      const endSlot = business_hour.end === 96 ? 96 : business_hour.end * 4;
-
-      if (!daySchedule[id]) {
-        daySchedule[id] = [];
-      }
-
-      daySchedule[id].push({
-        item: { name },
-        slots: Array.from({ length: endSlot - startSlot }, (_, i) => startSlot + i),
-      });
-
-      updatedSchedules[dayIndex] = daySchedule;
-      return updatedSchedules;
-    });
-  };
-
-
-  const handleAddPlaceDirectly = () => {
-    if (newPlace) {
-      const { id, name, business_hour } = newPlace;
-
-      // Automatically initialize the slots based on business hours
-      const startSlot = business_hour.start * 4;
-      const endSlot = business_hour.end === 96 ? 96 : business_hour.end * 4;
-
-      setSchedules((prevSchedule) => ({
-        ...prevSchedule,
-        [id]: [
-          {
-            item: { name },
-            slots: Array.from({ length: endSlot - startSlot }, (_, i) => startSlot + i),
-          },
-        ],
-      }));
-      setNewPlace(null);
-    }
-  };
 
   const handleEditPlace = (dayIndex: number, placeId: string) => {
     const daySchedule = schedules[dayIndex];
@@ -410,11 +353,6 @@ const DisplaySchedule: React.FC<DisplayScheduleProps> = ({ routeData }) => {
             timeSlots={timeSlots}
             collisions={calculateCollisions(schedules)[dayIndex]}
             onEdit={(placeId) => handleEditPlace(dayIndex, placeId)}
-          />
-          <AddPlaceDropZone
-            onDrop={(item) => handleDropToSchedule(item, dayIndex)}
-            newPlace={newPlace}
-            onAddPlace={handleAddPlaceDirectly}
           />
         </Box>
       ))}
