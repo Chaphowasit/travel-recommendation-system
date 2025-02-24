@@ -51,7 +51,7 @@ def send_message():
 
         message = data["message"]
         logger.debug(f"User message received: {message}")
-        
+
         if message == "Generate route from my note":
             if "note_payload" not in data:
                 logger.warning("No places note provided in request")
@@ -59,7 +59,12 @@ def send_message():
 
             vrp_solver = VRPSolver(data["note_payload"])
             vrp_result = vrp_solver.solve()
-            return jsonify({"user_message": "Here's your optimize traveling route!!!", "route": vrp_result})
+            return jsonify(
+                {
+                    "user_message": "Here's your optimize traveling route!!!",
+                    "route": vrp_result,
+                }
+            )
 
         intent_result = chatbot.classify_intent(message)
         logger.debug(f"Intent classified as: {intent_result}")
@@ -70,9 +75,11 @@ def send_message():
             return jsonify({"user_message": response})
 
         logger.info("Recommendation intent detected")
-        activity_response_json, accommodation_response_json = fetch_place_detail(
-            message, weaviate_adapter, mariadb_adaptor
-        )
+
+        with MariaDB_Adaptor() as mariadb_session:
+            activity_response_json, accommodation_response_json = fetch_place_detail(
+                message, weaviate_adapter, mariadb_session
+            )
 
         place_type = chatbot.classify_place_type(message)
         logger.info(f"{place_type} type detected for recommendation")
@@ -87,7 +94,8 @@ def send_message():
             "accommodations": accommodation_response_json,
             "activities": activity_response_json,
         }
-
+        if weaviate_adapter.client is not None:
+            weaviate_adapter.close()
         logger.debug(f"Response generated: {result}")
         return jsonify(result)
 
@@ -102,23 +110,21 @@ def fetch_mariadb():
     try:
         # Get the 'place_ids' parameter from the query string
         place_ids = request.args.get("place_ids")
-        
+
         print(place_ids)
-        
+
         # Ensure place_ids is provided
         if not place_ids:
             return jsonify({"error": "place_ids parameter is required"}), 400
 
         # Split the place_ids string by commas to create a list of strings
         place_ids_list = place_ids.split(",")
-        
-        
 
         # Fetch place details from the MariaDB_Adaptor
         accommodation_place_details = mariadb_adaptor.fetch_accommodations(
             place_ids=place_ids_list
         )
-        
+
         activity_place_details = mariadb_adaptor.fetch_activities(
             place_ids=place_ids_list
         )
@@ -128,8 +134,10 @@ def fetch_mariadb():
 
         # Transform and rearrange fields
         for place_id in place_ids_list:
-            data = activity_place_details.get(place_id, None) or accommodation_place_details.get(place_id, None)
-            
+            data = activity_place_details.get(
+                place_id, None
+            ) or accommodation_place_details.get(place_id, None)
+
             entry = rename_field(place_id, data)
 
             # Append entry to the list
@@ -143,133 +151,102 @@ def fetch_mariadb():
         return jsonify({"error": str(e)}), 500
 
 
-
-
 vrp_payload = {
-            "accommodation": {
-                "id": "H0021",
-                "sleepTimes": [
-                    {"morning": 28, "evening": 74, "sleepTime": 32},
-                    {"morning": 30, "evening": 72, "sleepTime": 32},
-                    {"morning": 30, "evening": 64, "sleepTime": 32},
-                ]
+    "accommodation": {
+        "id": "H0021",
+        "sleepTimes": [
+            {"morning": 28, "evening": 74, "sleepTime": 32},
+            {"morning": 30, "evening": 72, "sleepTime": 32},
+            {"morning": 30, "evening": 64, "sleepTime": 32},
+        ],
+    },
+    "activities": [
+        [
+            {
+                "id": "A0423",
+                "visit_time": [{"start": 22, "end": 44}, {"start": 60, "end": 72}],
             },
-            "activities": [
-                [
-                    {
-                        "id": "A0423",
-                        "visit_time": [
-                            {"start": 22, "end": 44},
-                            {"start": 60, "end": 72}
-                        ],
-                    },
-                    {
-                        "id": "A0153",
-                        "visit_time": [
-                            {"start": 26, "end": 68}
-                        ],
-                    },
-                    {
-                        "id": "A0155",
-                        "visit_time": [
-                            {"start": 30, "end": 52},
-                            {"start": 56, "end": 78}
-                        ],
-                    },
-                    {
-                        "id": "A0512",
-                        "visit_time": [
-                            {"start": 25, "end": 40},
-                            {"start": 54, "end": 72}
-                        ],
-                    }, 
+            {
+                "id": "A0153",
+                "visit_time": [{"start": 26, "end": 68}],
+            },
+            {
+                "id": "A0155",
+                "visit_time": [{"start": 30, "end": 52}, {"start": 56, "end": 78}],
+            },
+            {
+                "id": "A0512",
+                "visit_time": [{"start": 25, "end": 40}, {"start": 54, "end": 72}],
+            },
+        ],
+        [
+            {
+                "id": "A0527",
+                "visit_time": [
+                    {"start": 20, "end": 34},
+                    {"start": 38, "end": 58},
                 ],
-                [
-                    {
-                        "id": "A0527",
-                        "visit_time": [
-                            {"start": 20, "end": 34},
-                            {"start": 38, "end": 58},
-                        ],
-
-                    },
-                    {
-                        "id": "A0444",
-                        "visit_time": [
-                            {"start": 42, "end": 60}, 
-                            {"start": 72, "end": 94}
-                        ],
-
-                    },
-                    {
-                        "id": "A0002",
-                        "visit_time": [
-                            {"start": 50, "end": 64}
-                        ],
-
-                    },
-                    {
-                        "id": "A0238",
-                        "visit_time": [
-                            {"start": 48, "end": 72}
-                        ],
-
-                    },
+            },
+            {
+                "id": "A0444",
+                "visit_time": [{"start": 42, "end": 60}, {"start": 72, "end": 94}],
+            },
+            {
+                "id": "A0002",
+                "visit_time": [{"start": 50, "end": 64}],
+            },
+            {
+                "id": "A0238",
+                "visit_time": [{"start": 48, "end": 72}],
+            },
+        ],
+        [
+            {
+                "id": "A0055",
+                "visit_time": [
+                    {"start": 40, "end": 68},
+                    {"start": 28, "end": 64},
                 ],
-                [
-                    {
-                        "id": "A0055",
-                        "visit_time": [
-                            {"start": 40, "end": 68},
-                            {"start": 28, "end": 64},
-                        ],
-
-                    },
-                    {
-                        "id": "A0787",
-                        "visit_time": [
-                            {"start": 22, "end": 40},
-                            {"start": 36, "end": 74},
-                        ],
-
-                    },
-                    {
-                        "id": "A0786",
-                        "visit_time": [
-                            {"start": 28, "end": 42}
-                        ],
-
-                    },
-                    {
-                        "id": "A0234",
-                        "visit_time": [
-                            {"start": 58, "end": 72}
-                        ],
-                    },
-                ]
-            ],
-            "activities_stayTime": {
-                "A0423": 8,
-                "A0153": 12,
-                "A0155": 16,
-                "A0512": 20,
-                "A0527": 8,
-                "A0444": 15,
-                "A0002": 19,
-                "A0238": 21,
-                "A0055": 4,
-                "A0787": 8,
-                "A0786": 13,
-                "A0234": 11,
-            }
-        }
+            },
+            {
+                "id": "A0787",
+                "visit_time": [
+                    {"start": 22, "end": 40},
+                    {"start": 36, "end": 74},
+                ],
+            },
+            {
+                "id": "A0786",
+                "visit_time": [{"start": 28, "end": 42}],
+            },
+            {
+                "id": "A0234",
+                "visit_time": [{"start": 58, "end": 72}],
+            },
+        ],
+    ],
+    "activities_stayTime": {
+        "A0423": 8,
+        "A0153": 12,
+        "A0155": 16,
+        "A0512": 20,
+        "A0527": 8,
+        "A0444": 15,
+        "A0002": 19,
+        "A0238": 21,
+        "A0055": 4,
+        "A0787": 8,
+        "A0786": 13,
+        "A0234": 11,
+    },
+}
 
 if __name__ == "__main__":
     # Initialize dependencies
     chatbot = Chatbot()
     weaviate_adapter = Weaviate_Adapter()
-    mariadb_adaptor = MariaDB_Adaptor()
-    Base.metadata.create_all(mariadb_adaptor.get_engine())
+    with MariaDB_Adaptor() as mariadb_adaptor:
+        Base.metadata.create_all(mariadb_adaptor.get_engine())
 
     logger.info("Starting Flask application")
     app.run(debug=True)

@@ -6,16 +6,17 @@ from common.utils import rename_field
 
 chatbot = Chatbot()
 
+
 def fetch_place_detail(
     message: str, weaviate_adapter: Weaviate_Adapter, mariadb_adaptor: MariaDB_Adaptor
 ):
     # Fetch and process activity recommendations
     activity_response_json = weaviate_adapter.remove_dup_and_get_id(
-        collection_name="Activity_Embedded", 
-        property_name="name", 
-        message=message, 
-        bridge_name="Activity_Bridge", 
-        id_property="activity_id"
+        collection_name="Activity_Embedded",
+        property_name="name",
+        message=message,
+        bridge_name="Activity_Bridge",
+        id_property="activity_id",
     )
 
     # Fetch and process accommodation recommendations
@@ -26,18 +27,26 @@ def fetch_place_detail(
         bridge_name="Accommodation_Bridge",
         id_property="accommodation_id",
     )
-    
+
     # Step 1: Sort the JSON responses by score
     activity_response_json.sort(key=lambda x: x.get("score", 0), reverse=True)
     accommodation_response_json.sort(key=lambda x: x.get("score", 0), reverse=True)
 
     # Step 2: Fetch related activities and accommodations
-    activities = mariadb_adaptor.fetch_activities([item.get("id") for item in activity_response_json])
-    accommodations = mariadb_adaptor.fetch_accommodations([item.get("id") for item in accommodation_response_json])
+    activities = mariadb_adaptor.fetch_activities(
+        [item.get("id") for item in activity_response_json]
+    )
+    accommodations = mariadb_adaptor.fetch_accommodations(
+        [item.get("id") for item in accommodation_response_json]
+    )
 
     # Step 3: Map scores to the fetched data
-    activity_score_map = {item.get("id"): item.get("score", 0) for item in activity_response_json}
-    accommodation_score_map = {item.get("id"): item.get("score", 0) for item in accommodation_response_json}
+    activity_score_map = {
+        item.get("id"): item.get("score", 0) for item in activity_response_json
+    }
+    accommodation_score_map = {
+        item.get("id"): item.get("score", 0) for item in accommodation_response_json
+    }
 
     # Step 4: Rename fields and include scores for sorting
     activities = [
@@ -58,26 +67,28 @@ def fetch_place_detail(
         activity.pop("score")
     for accommodation in accommodations:
         accommodation.pop("score")
-        
+
     for place in activities:
         if place.get("description") == None:
             place["description"] = summarize_description(place.get("tag"))
             place["tag"] = NER(place.get("tag"))
-            
-            mariadb_adaptor.update_value_by_place_id(Activity, place["id"], {
-                "description": place["description"],
-                "about_and_tags": place["tag"] 
-            })
-            
+
+            mariadb_adaptor.update_value_by_place_id(
+                Activity,
+                place["id"],
+                {"description": place["description"], "about_and_tags": place["tag"]},
+            )
+
     for place in accommodations:
         if place.get("description") == None:
             place["description"] = summarize_description(place.get("tag"))
             place["tag"] = NER(place.get("tag"))
-            
-            mariadb_adaptor.update_value_by_place_id(Accommodation, place["id"], {
-                "description": place["description"],
-                "about_and_tags": place["tag"] 
-            })
+
+            mariadb_adaptor.update_value_by_place_id(
+                Accommodation,
+                place["id"],
+                {"description": place["description"], "about_and_tags": place["tag"]},
+            )
 
     return activities, accommodations
 

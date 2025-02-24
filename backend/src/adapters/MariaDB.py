@@ -8,26 +8,31 @@ from common.mariadb_schema import Activity, Accommodation, Duration
 from common.utils import transform_sec_to_int, transform_time_to_int
 from typing import Dict, List, Tuple, Any
 
-# Configure logging
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class MariaDB_Adaptor:
     def __init__(self):
-        # Initialize the database connection using an environment variable
         self.engine = sqlalchemy.create_engine(os.getenv("MARIADB_URI"))
-
-        # Create a session
         Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+        self.Session = Session
+
+    def __enter__(self):
+        self.session = self.Session()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+
+        if exc_type:
+            self.session.rollback()
+        self.session.close()
 
     def get_engine(self):
         return self.engine
 
-    def fetch_accommodations(
-        self, place_ids: List[str]
-    ) -> Dict[str, Dict[str, int]]:
+    def fetch_accommodations(self, place_ids: List[str]) -> Dict[str, Dict[str, int]]:
         """
         Fetches latitude, longitude, and business hours for each place ID from Activity and Accommodation tables.
 
@@ -70,18 +75,13 @@ class MariaDB_Adaptor:
                 f"Fetched Accommodation - ID: {acc.id}, Lat: {acc.latitude}, Lon: {acc.longitude}, Start Int: {start_int}, End Int: {end_int}"
             )
 
-        # Check for any IDs not found
         missing_ids = set(place_ids) - set(place_details.keys())
         if missing_ids:
-            logger.warning(
-                f"Accommodation details not found for IDs: {missing_ids}"
-            )
+            logger.warning(f"Accommodation details not found for IDs: {missing_ids}")
 
         return place_details
-    
-    def fetch_activities(
-        self, place_ids: List[str]
-    ) -> Dict[str, Dict[str, Any]]:
+
+    def fetch_activities(self, place_ids: List[str]) -> Dict[str, Dict[str, Any]]:
         """
         Fetches latitude, longitude, and business hours for each place ID from Activity and Accommodation tables.
 
@@ -93,7 +93,6 @@ class MariaDB_Adaptor:
         """
         place_details = {}
 
-        # Fetch from Activity
         activities = (
             self.session.query(
                 Activity.id,
@@ -130,16 +129,15 @@ class MariaDB_Adaptor:
                 f"Fetched Activity - ID: {activity.id}, Lat: {activity.latitude}, Lon: {activity.longitude}, Start Int: {start_int}, End Int: {end_int}"
             )
 
-        # Check for any IDs not found
         missing_ids = set(place_ids) - set(place_details.keys())
         if missing_ids:
-            logger.warning(
-                f"Activity details not found for IDs: {missing_ids}"
-            )
+            logger.warning(f"Activity details not found for IDs: {missing_ids}")
 
         return place_details
-    
-    def update_value_by_place_id(self, table: Activity | Accommodation, record_id: str, updates: Dict[str, Any]) -> bool:
+
+    def update_value_by_place_id(
+        self, table: Activity | Accommodation, record_id: str, updates: Dict[str, Any]
+    ) -> bool:
         """
         Updates the specified fields of a record in the given table.
 
@@ -148,28 +146,34 @@ class MariaDB_Adaptor:
         :param updates: A dictionary of column names and values to update.
         :return: True if the update was successful, False otherwise.
         """
-        
+
         try:
-            # Build the query
+
             record = self.session.query(table).filter(table.id == record_id).first()
             if not record:
-                logger.warning(f"Record with ID {record_id} not found in {table.__tablename__}.")
+                logger.warning(
+                    f"Record with ID {record_id} not found in {table.__tablename__}."
+                )
                 return False
 
-            # Update the fields
             for column, value in updates.items():
                 if hasattr(record, column):
                     setattr(record, column, value)
                 else:
-                    logger.warning(f"Column '{column}' does not exist on {table.__tablename__}.")
+                    logger.warning(
+                        f"Column '{column}' does not exist on {table.__tablename__}."
+                    )
 
-            # Commit the changes
             self.session.commit()
-            logger.info(f"Record with ID {record_id} in {table.__tablename__} updated successfully.")
+            logger.info(
+                f"Record with ID {record_id} in {table.__tablename__} updated successfully."
+            )
             return True
         except Exception as e:
-            self.session.rollback()  # Roll back any changes on failure
-            logger.error(f"Error updating record {record_id} in {table.__tablename__}: {e}")
+            self.session.rollback()
+            logger.error(
+                f"Error updating record {record_id} in {table.__tablename__}: {e}"
+            )
             return False
 
     def fetch_durations(self, pairs):
@@ -184,7 +188,11 @@ class MariaDB_Adaptor:
 
         records = (
             self.session.query(Duration)
-            .filter(sqlalchemy.tuple_(Duration.source_id, Duration.destination_id).in_(pairs))
+            .filter(
+                sqlalchemy.tuple_(Duration.source_id, Duration.destination_id).in_(
+                    pairs
+                )
+            )
             .all()
         )
 
@@ -193,31 +201,27 @@ class MariaDB_Adaptor:
                 record.source_id,
                 record.destination_id,
                 transform_sec_to_int(record.duration),
-            ) for record in records
+            )
+            for record in records
         ]
-        
+
     def upsert_durations(self, pairs: List[Tuple[int, int, float]]):
         """
         Upserts the Duration table with new durations or updates existing records if conflicts occur.
-        
+
         :param pairs: List of (source_id, destination_id, duration) tuples.
         """
         if not pairs:
             return
 
-        # Build the list of dictionaries representing the records
         records = [
-            {"source_id": pair[0], "destination_id": pair[1], "duration": pair[2]} for pair in pairs
+            {"source_id": pair[0], "destination_id": pair[1], "duration": pair[2]}
+            for pair in pairs
         ]
 
-        # Create an insert statement
         stmt = insert(Duration).values(records)
 
-        # Use the on_duplicate_key_update clause to handle conflicts
-        stmt = stmt.on_duplicate_key_update(
-            duration=stmt.inserted.duration  # Update duration with the inserted value on conflict
-        )
+        stmt = stmt.on_duplicate_key_update(duration=stmt.inserted.duration)
 
-        # Execute the statement and commit the transaction
         self.session.execute(stmt)
         self.session.commit()

@@ -14,10 +14,10 @@ class Weaviate_Adapter:
         url = os.getenv("WEAVIATE_HOST")
 
         headers = {"X-OpenAI-Api-Key": gpt_key, "X-Cohere-Api-Key": cohere_key}
-        self.client = weaviate.connect_to_local(
-            host=url,
-            headers=headers
-        )
+        self.client = weaviate.connect_to_local(host=url, headers=headers)
+
+    def close(self):
+        self.client.close()
 
     def get_collections(self, collection_name: str):
         return self.client.collections.get(collection_name)
