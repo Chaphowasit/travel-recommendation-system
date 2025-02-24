@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.mysql import insert
 from common.mariadb_schema import Activity, Accommodation, Duration
 from common.utils import transform_sec_to_int, transform_time_to_int
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Union
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -139,7 +139,7 @@ class MariaDB_Adaptor:
 
         return place_details
     
-    def update_value_by_place_id(self, table: Activity | Accommodation, record_id: str, updates: Dict[str, Any]) -> bool:
+    def update_value_by_place_id(self, table: Union[Activity, Accommodation], record_id: str, updates: Dict[str, Any]) -> bool:
         """
         Updates the specified fields of a record in the given table.
 
