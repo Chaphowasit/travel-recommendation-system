@@ -3,25 +3,30 @@ import {
   Box,
   Grid2 as Grid,
   Button,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
+  IconButton,
+  FormControlLabel,
+  Switch,
+  Checkbox,
 } from "@mui/material";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
-import React, { useEffect, useState } from "react";
-import { Activity } from "../../utils/DataType/place";
-import { ActivityShoppingCartItem, ActivityZone } from "../../utils/DataType/shoppingCart";
-import { dayjsStartDate, formatTime, generateDateRange } from "../../utils/time";
-import MultiRangeSelectBar from "../utils/MultiRangeSelectBar";
 import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
+import React, { useEffect, useState } from "react";
 
+import { Activity } from "../../utils/DataType/place";
+import {
+  ActivityShoppingCartItem,
+  ActivityZone,
+} from "../../utils/DataType/shoppingCart";
+import { dayjsStartDate, formatTime, generateDateRange } from "../../utils/time";
+import TimePicker from "../utils/TimePicker";
 
 interface ActivityInformationProps {
   data: Activity | null;
   selectedDates: { startDate: Date | null; endDate: Date | null };
   shoppingCartItem: ActivityShoppingCartItem[]; // Initial shopping cart data
-  setShoppingCartItem:  React.Dispatch<React.SetStateAction<ActivityShoppingCartItem[]>>; // Function to update the shopping cart
+  setShoppingCartItem: React.Dispatch<React.SetStateAction<ActivityShoppingCartItem[]>>; // Function to update the shopping cart
   handleFinished: () => void;
 }
 
@@ -32,70 +37,237 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   setShoppingCartItem,
   handleFinished,
 }) => {
-  if (data === null) return;
+  if (data === null) return null;
 
+  // State for advanced setting
+  const [showAdvanceSetting, setShowAdvanceSetting] = useState(false);
+
+  // Outer (date) and inner (specific time) checkboxes
+  const [selectedDatesArray, setSelectedDatesArray] = useState<string[]>([]);
+  const [specificTimeDates, setSpecificTimeDates] = useState<string[]>([]);
+
+  // Zones & stay hours
   const [zones, setZones] = useState<ActivityZone[]>([]);
   const [stayHours, setStayHours] = useState<number>(8); // Default stay time
 
+  // Load existing cart data if present
   useEffect(() => {
-    const existingItem = shoppingCartItem.find((cartItem) => cartItem.item.id === data.id);
+    if (!selectedDates.startDate) return;
 
+    const existingItem = shoppingCartItem.find(
+      (cartItem) => cartItem.item.id === data.id
+    );
     if (existingItem) {
-      // If item already in the cart, directly use its zones
-      setZones(existingItem.zones); 
-      setStayHours(existingItem.stayTime); // Set the stay time from cart item
-    } else if (selectedDates.startDate && selectedDates.endDate) {
-      // Generate zones based on selected date range if no existing item in cart
-      const newZones = generateDateRange(selectedDates.startDate, selectedDates.endDate).map(date => ({
-        date: dayjsStartDate(date).toDate(),
-        ranges: [{ start: data.business_hour.start, end: data.business_hour.end }], // Store initial range
-        stayTime: data.duration
-      }));
-      setZones(newZones);
-    }
-  }, [shoppingCartItem, data.id, selectedDates]);
+      // Restore zones, stayHours, and advanced setting
+      setZones(existingItem.zones);
+      setStayHours(existingItem.stayTime);
+      setShowAdvanceSetting(existingItem.advance);
 
-  const handleRangeChange = (index: number, newRanges: { start: number; end: number }[]) => {
+      // If advanced setting is on, try to restore which days/times were selected
+      if (existingItem.advance && selectedDates.endDate) {
+        const dateRange = generateDateRange(
+          selectedDates.startDate,
+          selectedDates.endDate
+        );
+
+        // 1) Rebuild the "selectedDatesArray" from selectDateIndexes
+        if (existingItem.selectDateIndexes && existingItem.selectDateIndexes.length > 0) {
+          const newSelectedDatesArray: string[] = [];
+          existingItem.selectDateIndexes.forEach((idx) => {
+            if (idx >= 0 && idx < dateRange.length) {
+              const dateStr = dayjsStartDate(dateRange[idx]).format("YYYY-MM-DD");
+              newSelectedDatesArray.push(dateStr);
+            }
+          });
+          setSelectedDatesArray(newSelectedDatesArray);
+
+          // 2) Rebuild "specificTimeDates"
+          const newSpecificTimeDates: string[] = [];
+          newSelectedDatesArray.forEach((dateStr) => {
+            // find all zones for that date
+            const dateZones = existingItem.zones.filter(
+              (z) => dayjsStartDate(z.date).format("YYYY-MM-DD") === dateStr
+            );
+
+            // If there's more than one zone, definitely user used specific times
+            // If there's exactly one zone, check if it matches full business hours
+            if (dateZones.length > 1) {
+              newSpecificTimeDates.push(dateStr);
+            } else if (dateZones.length === 1) {
+              const zone = dateZones[0];
+              if (
+                zone.range.start !== data.business_hour.start ||
+                zone.range.end !== data.business_hour.end
+              ) {
+                newSpecificTimeDates.push(dateStr);
+              }
+            }
+          });
+          setSpecificTimeDates(newSpecificTimeDates);
+        }
+      }
+    } else {
+      // By default, add one zone for the startDate
+      const defaultZone: ActivityZone = {
+        date: dayjsStartDate(selectedDates.startDate).toDate(),
+        range: {
+          start: data.business_hour.start,
+          end: data.business_hour.end,
+        },
+      };
+      setZones([defaultZone]);
+      setStayHours(data.duration);
+    }
+  }, [shoppingCartItem, data, selectedDates]);
+
+  // Update zone start time for a specific date & index
+  const handleZoneStartTimeChange = (
+    zoneIndex: number,
+    newStart: number,
+    dateStr: string
+  ) => {
     setZones((prevZones) => {
-      const updatedZones = prevZones.map((zone, i) =>
-        i === index ? { ...zone, ranges: newRanges } : zone
+      // 1. separate out zones for this date vs. others
+      const otherZones = prevZones.filter(
+        (z) => dayjsStartDate(z.date).format("YYYY-MM-DD") !== dateStr
+      );
+      const dateZones = prevZones.filter(
+        (z) => dayjsStartDate(z.date).format("YYYY-MM-DD") === dateStr
       );
 
-      // Ensure Stay Hours is less than or equal to the minimum range duration
-      const minRangeDuration = getMinRangeDuration(updatedZones);
-      if (stayHours > minRangeDuration) {
-        setStayHours(minRangeDuration);
+      // 2. update the single zone at zoneIndex
+      const oldRange = dateZones[zoneIndex].range;
+      let adjustedStart = newStart;
+      if (adjustedStart > oldRange.end) {
+        adjustedStart = oldRange.end;
       }
+      dateZones[zoneIndex] = {
+        ...dateZones[zoneIndex],
+        range: { start: newStart, end: newStart + stayHours },
+      };
 
-      return updatedZones;
+      alert(JSON.stringify(dateZones[zoneIndex]))
+
+      // 3. recombine them
+      return [...otherZones, ...dateZones];
     });
   };
 
-  // Calculate the minimum range duration, only if zones are populated
-  const getMinRangeDuration = (zonesToCheck: ActivityZone[] = zones) => {
-    if (zonesToCheck.length === 0) return 0; // Return 0 if zones are not populated yet
-  
-    const durations = zonesToCheck
-      .map((zone) => zone.ranges.map((range) => range.end - range.start))
-      .flat();
-  
-    if (durations.length === 0) return 0; // Handle the case where durations array is empty
-
-    return Math.min(...durations);
+  // Add a new zone row (defaults to the full business hour)
+  const handleAddZone = (dateStr: string) => {
+    const newZone: ActivityZone = {
+      date: dayjsStartDate(dateStr).toDate(),
+      range: {
+        start: data.business_hour.start,
+        end: data.business_hour.end,
+      },
+    };
+    setZones((prev) => [...prev, newZone]);
   };
-  
 
+  // Remove a zone row
+  const handleRemoveZone = (dateStr: string, zoneStart: number) => {
+    setZones((prev) => {
+      const idxToRemove = prev.findIndex(
+        (z) =>
+          dayjsStartDate(z.date).format("YYYY-MM-DD") === dateStr &&
+          z.range.start === zoneStart
+      );
+      if (idxToRemove !== -1) {
+        const newZones = [...prev];
+        newZones.splice(idxToRemove, 1);
+        return newZones;
+      }
+      return prev;
+    });
+  };
+
+  // Select the stay hours
   const handleStayHoursChange = (value: number) => {
     setStayHours(value);
   };
 
+  // "Save" logic: build final zones and store them in the cart item
   const handleAddToCartClick = () => {
-    if (getMinRangeDuration() <= 0) {
-      return;
+    if (!selectedDates.startDate || !selectedDates.endDate) return;
+
+    let finalZones: ActivityZone[] = [];
+    let selectDateIndexes: number[] = [];
+    let selectTimeIndexes: number[] = [];
+
+    const dateRange = generateDateRange(
+      selectedDates.startDate,
+      selectedDates.endDate
+    );
+
+    if (!showAdvanceSetting) {
+      // 1) Advance Setting is OFF => zone for every day
+      finalZones = dateRange.map((d) => ({
+        date: dayjsStartDate(d).toDate(),
+        range: {
+          start: data.business_hour.start,
+          end: data.business_hour.end,
+        },
+      }));
+      // Mark all date indexes as selected
+      selectDateIndexes = dateRange.map((_, i) => i);
+      // No specific times => selectTimeIndexes remains empty
+    } else {
+      // 2) Advance Setting is ON
+      if (selectedDatesArray.length === 0) {
+        alert(
+          "No day selected. Please select at least one day or disable Advance Setting."
+        );
+        return;
+      }
+
+      // For each date in the range, check if it's selected
+      dateRange.forEach((d, i) => {
+        const dateStr = dayjsStartDate(d).format("YYYY-MM-DD");
+        if (selectedDatesArray.includes(dateStr)) {
+          // This date is selected => add i to selectDateIndexes
+          selectDateIndexes.push(i);
+
+          const isSpecificTime = specificTimeDates.includes(dateStr);
+          if (isSpecificTime) {
+            // (a) "Specific visit time?" => push all user-defined zones for that date
+            const userZonesForDate = zones.filter(
+              (z) => dayjsStartDate(z.date).format("YYYY-MM-DD") === dateStr
+            );
+            finalZones.push(...userZonesForDate);
+
+            // For each zone, we push its local index in a flattened array
+            const timeIndexArray = userZonesForDate.map((_, zIndex) => zIndex);
+            selectTimeIndexes = selectTimeIndexes.concat(timeIndexArray);
+          } else {
+            // (b) "Specific visit time?" is OFF => single zone with full business hour
+            finalZones.push({
+              date: dayjsStartDate(d).toDate(),
+              range: {
+                start: data.business_hour.start,
+                end: data.business_hour.end,
+              },
+            });
+            // No specific times => do not add anything to selectTimeIndexes
+          }
+        }
+      });
     }
 
-    const updatedCart = shoppingCartItem.filter((cartItem) => cartItem.item.id !== data.id);
-    updatedCart.push({ item: data, zones, stayTime: stayHours });
+    // Build the updated cart item
+    const updatedCart = shoppingCartItem.filter(
+      (cartItem) => cartItem.item.id !== data.id
+    );
+
+    updatedCart.push({
+      item: data,
+      zones: finalZones,
+      stayTime: stayHours,
+      advance: showAdvanceSetting,
+      selectDateIndexes,
+      // single array of time indexes
+      selectTimeIndexes,
+    });
 
     setShoppingCartItem(updatedCart);
     handleFinished();
@@ -103,9 +275,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
 
   const handleRemoveFromCartClick = () => {
     setShoppingCartItem((oldItem) => {
-      return oldItem.filter((item) => 
-        item.item.id === data.id
-      )
+      return oldItem.filter((item) => item.item.id !== data.id);
     });
     handleFinished();
   };
@@ -113,7 +283,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   return (
     <Box sx={{ width: "100%", padding: "20px", marginTop: "10px" }}>
       <Grid container spacing={2} alignItems="flex-start">
-        {/* Image  */}
+        {/* Image */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Box
             component="img"
@@ -128,7 +298,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
           />
         </Grid>
 
-        {/* Info  */}
+        {/* Info */}
         <Grid size={{ xs: 12, md: 6 }} sx={{ position: "relative" }}>
           <Box>
             <Typography
@@ -156,94 +326,256 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
               <strong>Tag:</strong> {data.tag}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ marginBottom: "10px" }}>
-              <strong>Business Hour:</strong> {formatTime(data.business_hour.start)} - {formatTime(data.business_hour.end)}
+              <strong>Business Hour:</strong> {formatTime(data.business_hour.start)} -{" "}
+              {formatTime(data.business_hour.end)}
             </Typography>
           </Box>
         </Grid>
       </Grid>
 
-      {/* Preferred Visit Time  */}
-      <Box sx={{ marginTop: "20px" }}>
-        <Typography variant="h6" sx={{ marginBottom: "10px" }}>
-          Preferred Visit Time
-        </Typography>
-
-        {zones.map((zone, index) => {
-          return (
-            <Box key={index} sx={{ marginBottom: "20px" }}>
-              <Grid container spacing={2} alignItems="center">
-                <Grid size={{ xs: 12, sm: 2 }}>
-                  <Typography variant="body1">
-                    {dayjsStartDate(zone.date).format("YYYY-MM-DD")}
-                  </Typography>
-                </Grid>
-
-                <Grid
-                  size={{ xs: 12, sm: 10 }}
-                  sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}
-                >
-                  <MultiRangeSelectBar
-                    totalSlots={96}
-                    range={zone.ranges}
-                    setRange={(newRanges: { start: number; end: number }[]) => handleRangeChange(index, newRanges)}
-                    displayFormat={(value) => formatTime(value)}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-          );
-        })}
+      {/* Stay Hours + Advance Setting */}
+      <Box
+        sx={{
+          marginTop: "20px",
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 4,
+        }}
+      >
+        {/* Stay Hours Select */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <Typography variant="h6">Stay Hours</Typography>
+          <TimePicker
+            time={stayHours}
+            setTime={handleStayHoursChange}
+            range={{
+              start: 1,
+              end: 96,
+            }}
+          />
+        </Box>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showAdvanceSetting}
+              onChange={() => setShowAdvanceSetting((prev) => !prev)}
+              color="primary"
+            />
+          }
+          label="Advance Setting"
+        />
       </Box>
 
-      {/* Stay Hours Select */}
-      <Box sx={{ marginTop: "20px" }}>
-        <Typography variant="h6" sx={{ marginBottom: "10px" }}>
-          Stay Hours
-        </Typography>
-        <FormControl fullWidth>
-          <InputLabel>Stay Hours</InputLabel>
-          <Select
-            value={stayHours || 1}
-            onChange={(e) => handleStayHoursChange(Number(e.target.value))}
-            label="Stay Hours"
-            disabled = {getMinRangeDuration() <= 0}
-          >
-            {[...Array(getMinRangeDuration() > 0 ? getMinRangeDuration() : 1)].map((_, index) => (
-              <MenuItem key={index + 1} value={index + 1}>
-                {formatTime(index + 1)} hrs
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
+      {/* Preferred Visit Time Section */}
+      {showAdvanceSetting && (
+        <Box sx={{ marginTop: "20px" }}>
+          <Typography variant="h6" sx={{ marginBottom: "10px" }}>
+            Preferred Visit Time
+          </Typography>
+          {selectedDates.startDate &&
+            selectedDates.endDate &&
+            generateDateRange(selectedDates.startDate, selectedDates.endDate).map(
+              (d) => {
+                const dateStr = dayjsStartDate(d).format("YYYY-MM-DD");
+                const isDateSelected = selectedDatesArray.includes(dateStr);
+                const zonesForThisDate = zones.filter(
+                  (z) =>
+                    dayjsStartDate(z.date).format("YYYY-MM-DD") === dateStr
+                );
+                const isSpecificTimeEnabled = specificTimeDates.includes(dateStr);
 
+                return (
+                  <Box
+                    key={dateStr}
+                    sx={{
+                      marginBottom: "20px",
+                      border: "1px solid #ccc",
+                      padding: "10px",
+                      borderRadius: "4px",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-start",
+                        gap: 2,
+                      }}
+                    >
+                      {/* Outer checkbox: select/deselect the date */}
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={isDateSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedDatesArray((prev) => [...prev, dateStr]);
+                              } else {
+                                // Unselect this date => remove from advanced
+                                setSelectedDatesArray((prev) =>
+                                  prev.filter((day) => day !== dateStr)
+                                );
+                                setSpecificTimeDates((prev) =>
+                                  prev.filter((day) => day !== dateStr)
+                                );
+                                // Also remove all zones for this date
+                                setZones((prev) =>
+                                  prev.filter(
+                                    (z) =>
+                                      dayjsStartDate(z.date).format("YYYY-MM-DD") !==
+                                      dateStr
+                                  )
+                                );
+                              }
+                            }}
+                            color="primary"
+                          />
+                        }
+                        label={dateStr}
+                      />
+
+                      {/* Inner checkbox: enable specific time (only if the date is selected) */}
+                      {isDateSelected && (
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={isSpecificTimeEnabled}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSpecificTimeDates((prev) => [...prev, dateStr]);
+                                  // If no zones exist for this date, add a default zone
+                                  if (zonesForThisDate.length === 0) {
+                                    const newZone: ActivityZone = {
+                                      date: dayjsStartDate(d).toDate(),
+                                      range: {
+                                        start: data.business_hour.start,
+                                        end: data.business_hour.end,
+                                      },
+                                    };
+                                    setZones((prev) => [...prev, newZone]);
+                                  }
+                                } else {
+                                  setSpecificTimeDates((prev) =>
+                                    prev.filter((day) => day !== dateStr)
+                                  );
+                                  // Remove all zones for this date
+                                  setZones((prev) =>
+                                    prev.filter(
+                                      (z) =>
+                                        dayjsStartDate(z.date).format("YYYY-MM-DD") !==
+                                        dateStr
+                                    )
+                                  );
+                                }
+                              }}
+                              color="primary"
+                            />
+                          }
+                          label="Specific visit time?"
+                        />
+                      )}
+                    </Box>
+
+                    {/* Time selection UI (only if the date is selected and specific time is enabled) */}
+                    {isDateSelected &&
+                      isSpecificTimeEnabled &&
+                      zonesForThisDate.map((zone, zoneIndex) => (
+                        <Box
+                          key={zoneIndex}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            backgroundColor: "#f9f9f9",
+                            borderRadius: "8px",
+                            padding: "8px 12px",
+                            boxShadow: 1,
+                            mt: 1,
+                            ml: 4,
+                          }}
+                        >
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Typography variant="body2" fontWeight="medium">
+                              From:
+                            </Typography>
+                            <TimePicker
+                              time={zone.range.start}
+                              setTime={(newTime) => {
+                                handleZoneStartTimeChange(zoneIndex, newTime, dateStr);
+                              }}
+                              range={{
+                                start: data.business_hour.start,
+                                end: (data.business_hour.end !== 96 || data.business_hour.start !== 0) ? data.business_hour.end - stayHours: 96,
+                              }}
+                            />
+                            <Typography variant="body2" fontWeight="medium">
+                              To:
+                            </Typography>
+                            <Typography variant="body2" color="primary">
+                              {formatTime(zone.range.start + stayHours)}
+                            </Typography>
+                          </Box>
+
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <IconButton
+                              color="primary"
+                              onClick={() => {
+                                handleAddZone(dateStr);
+                              }}
+                              size="small"
+                            >
+                              <AddIcon fontSize="small" />
+                            </IconButton>
+                            {zonesForThisDate.length > 1 && (
+                              <IconButton
+                                color="error"
+                                onClick={() => {
+                                  handleRemoveZone(dateStr, zone.range.start);
+                                }}
+                                size="small"
+                              >
+                                <RemoveIcon fontSize="small" />
+                              </IconButton>
+                            )}
+                          </Box>
+                        </Box>
+                      ))}
+                  </Box>
+                );
+              }
+            )}
+        </Box>
+      )}
+
+      {/* Bottom Action Buttons */}
       <Box
         sx={{
           marginTop: "20px",
           display: "flex",
           justifyContent: "flex-end",
-          alignItems: "center", // Align error message and button vertically
-          gap: "10px", // Add spacing between error message and button
+          alignItems: "center",
+          gap: "10px",
         }}
       >
-
-        {/* Add to Cart Button */}
         <Button
           onClick={handleAddToCartClick}
           color="primary"
           variant="contained"
           startIcon={<AddShoppingCartIcon />}
-          disabled={getMinRangeDuration() <= 0}
         >
           Save
         </Button>
         {shoppingCartItem.some((item) => item.item.id === data.id) && (
-          <Button onClick={handleRemoveFromCartClick} color="error" variant="contained" startIcon={<DeleteIcon />}>
+          <Button
+            onClick={handleRemoveFromCartClick}
+            color="error"
+            variant="contained"
+            startIcon={<DeleteIcon />}
+          >
             Remove
           </Button>
         )}
       </Box>
-
     </Box>
   );
 };

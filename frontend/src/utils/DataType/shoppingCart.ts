@@ -7,13 +7,16 @@ export interface Range {
 
 export interface ActivityZone { 
   date: Date; 
-  ranges: Range[]; 
+  range: Range; 
 }
 
 export interface ActivityShoppingCartItem {
   item: Activity;
   zones: ActivityZone[];
   stayTime: number;
+  advance: boolean;
+  selectDateIndexes?: number[];
+  selectTimeIndexes?: number[];
 }
 
 export interface AccommodationZone { 

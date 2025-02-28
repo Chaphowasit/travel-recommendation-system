@@ -155,7 +155,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, setActivity, setAccom
               <Divider/>
 
               <Box sx={{ marginTop: 2 }}>
-              <DisplaySchedule routeData={message.route} setRouteData={function (routeData: RouteData): void {
+              <DisplaySchedule routeData={message.route} setRouteData={function (_: RouteData): void {
                 throw new Error('Function not implemented.');
               } }/>
             </Box>

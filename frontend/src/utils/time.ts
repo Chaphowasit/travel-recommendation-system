@@ -21,10 +21,13 @@ export const dayjsStartDate = (date?: Date | string | Dayjs) => {
 // ======================== time format ===========================
 
 export const formatTime = (value: number) => {
-    const hours = Math.floor(value / 4);
-    const minutes = (value % 4) * 15;
+    const totalMinutes = value % 96 * 15;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 };
+
 
 // ======================== Date range ============================
 
