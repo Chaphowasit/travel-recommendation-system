@@ -5,19 +5,30 @@ from dotenv import load_dotenv
 import os
 from weaviate.classes.query import Filter
 
+load_dotenv()
+gpt_key = os.getenv("OPENAI_APIKEY")
+cohere_key = os.getenv("COHERE_KEY")
+url = os.getenv("WEAVIATE_HOST")
+
+headers = {"X-OpenAI-Api-Key": gpt_key, "X-Cohere-Api-Key": cohere_key}
+
 
 class Weaviate_Adapter:
     def __init__(self):
-        load_dotenv()
-        gpt_key = os.getenv("OPENAI_APIKEY")
-        cohere_key = os.getenv("COHERE_KEY")
-        url = os.getenv("WEAVIATE_HOST")
+        self.client = None
 
-        headers = {"X-OpenAI-Api-Key": gpt_key, "X-Cohere-Api-Key": cohere_key}
-        self.client = weaviate.connect_to_local(host=url, headers=headers)
+    def connect(self):
+        if self.client is None:
+            self.client = weaviate.connect_to_local(host=url, headers=headers)
+        else:
+            print("Already connected to Weaviate.")
 
     def close(self):
-        self.client.close()
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+        else:
+            print("Weaviate client is already closed.")
 
     def get_collections(self, collection_name: str):
         return self.client.collections.get(collection_name)
