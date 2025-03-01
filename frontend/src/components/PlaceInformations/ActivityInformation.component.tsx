@@ -50,6 +50,8 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   const [zones, setZones] = useState<ActivityZone[]>([]);
   const [stayHours, setStayHours] = useState<number>(8); // Default stay time
 
+  const [mustGo, setMustGo] = useState<boolean>(false)
+
   // Load existing cart data if present
   useEffect(() => {
     if (!selectedDates.startDate) return;
@@ -62,6 +64,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
       setZones(existingItem.zones);
       setStayHours(existingItem.stayTime);
       setShowAdvanceSetting(existingItem.advance);
+      setMustGo(existingItem.must)
 
       // If advanced setting is on, try to restore which days/times were selected
       if (existingItem.advance && selectedDates.endDate) {
@@ -136,17 +139,11 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
       );
 
       // 2. update the single zone at zoneIndex
-      const oldRange = dateZones[zoneIndex].range;
-      let adjustedStart = newStart;
-      if (adjustedStart > oldRange.end) {
-        adjustedStart = oldRange.end;
-      }
+      const endtime = (data.business_hour.end !== 96 || data.business_hour.start !== 0) ? Math.min(96, newStart + stayHours) : newStart + stayHours;
       dateZones[zoneIndex] = {
         ...dateZones[zoneIndex],
-        range: { start: newStart, end: newStart + stayHours },
+        range: { start: newStart, end: endtime },
       };
-
-      alert(JSON.stringify(dateZones[zoneIndex]))
 
       // 3. recombine them
       return [...otherZones, ...dateZones];
@@ -254,6 +251,26 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
       });
     }
 
+    const is24Hour = data.business_hour.start === 0 && data.business_hour.end === 96;
+
+    const anyInvalid = finalZones.some((zone) => {
+      if (!is24Hour) {
+        // Activity has fixed hours, must check range
+        return (
+          zone.range.start < data.business_hour.start ||
+          zone.range.start + stayHours > data.business_hour.end
+        );
+      }
+      return false; // If 24/7, allow all times
+    });
+
+    if (anyInvalid) {
+      alert(
+        "One or more selected time slots are outside the valid business hour range."
+      );
+      return; // stop here; don't save to cart
+    }
+
     // Build the updated cart item
     const updatedCart = shoppingCartItem.filter(
       (cartItem) => cartItem.item.id !== data.id
@@ -263,6 +280,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
       item: data,
       zones: finalZones,
       stayTime: stayHours,
+      must: mustGo,
       advance: showAdvanceSetting,
       selectDateIndexes,
       // single array of time indexes
@@ -343,15 +361,29 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
         }}
       >
         {/* Stay Hours Select */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <Typography variant="h6">Stay Hours</Typography>
-          <TimePicker
-            time={stayHours}
-            setTime={handleStayHoursChange}
-            range={{
-              start: 1,
-              end: 96,
-            }}
+
+        <Box sx={{ display: "flex", flexDirection: "column" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <Typography variant="h6">Stay Hours</Typography>
+            <TimePicker
+              time={stayHours}
+              setTime={handleStayHoursChange}
+              range={{
+                start: 1,
+                end: 96,
+              }}
+            />
+          </Box>
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={mustGo}
+                onChange={() => setMustGo((prev) => !prev)}
+                color="primary"
+              />
+            }
+            label="Must Visit?"
           />
         </Box>
         <FormControlLabel
@@ -505,7 +537,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
                               }}
                               range={{
                                 start: data.business_hour.start,
-                                end: (data.business_hour.end !== 96 || data.business_hour.start !== 0) ? data.business_hour.end - stayHours: 96,
+                                end: (data.business_hour.end !== 96 || data.business_hour.start !== 0) ? data.business_hour.end - stayHours : 96,
                               }}
                             />
                             <Typography variant="body2" fontWeight="medium">

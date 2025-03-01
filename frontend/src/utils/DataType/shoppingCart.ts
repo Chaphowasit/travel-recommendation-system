@@ -14,6 +14,7 @@ export interface ActivityShoppingCartItem {
   item: Activity;
   zones: ActivityZone[];
   stayTime: number;
+  must: boolean;
   advance: boolean;
   selectDateIndexes?: number[];
   selectTimeIndexes?: number[];
