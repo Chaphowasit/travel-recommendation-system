@@ -21,7 +21,7 @@ export const dayjsStartDate = (date?: Date | string | Dayjs) => {
 // ======================== time format ===========================
 
 export const formatTime = (value: number) => {
-    const totalMinutes = value % 96 * 15;
+    const totalMinutes = ((value < 0) ? 96 + value : value) % 96 * 15;
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
 

@@ -22,8 +22,7 @@ export interface ActivityShoppingCartItem {
 
 export interface AccommodationZone { 
   date: Date; 
-  ranges: Range[]; 
-  sleepTime: number;
+  ranges: Range;
 }
 
 export interface AccommodationShoppingCartItem {

@@ -2,26 +2,26 @@ import {
   Typography,
   Box,
   Grid2 as Grid,
-  MenuItem,
-  Select,
   Button,
-  FormControl,
-  InputLabel,
 } from "@mui/material";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import React, { useEffect, useState } from "react";
 import { Accommodation } from "../../utils/DataType/place";
-import { AccommodationShoppingCartItem, AccommodationZone, Range } from "../../utils/DataType/shoppingCart";
+import {
+  AccommodationShoppingCartItem,
+  AccommodationZone,
+} from "../../utils/DataType/shoppingCart";
 import { dayjsStartDate, formatTime, generateDateRange } from "../../utils/time";
-import DualRangeSelectBar from "../utils/DualRangeSelectBar";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-// Define the props
+// Import custom quarter-hour TimePicker
+import TimePicker from "../utils/TimePicker";
+
 interface AccommodationInformationProps {
   data: Accommodation | null;
   selectedDates: { startDate: Date; endDate: Date };
-  shoppingCartItem: AccommodationShoppingCartItem | null; // Initial shopping cart data
-  setShoppingCartItem: (items: AccommodationShoppingCartItem) => void; // Function to update the shopping cart
+  shoppingCartItem: AccommodationShoppingCartItem | null;
+  setShoppingCartItem: (items: AccommodationShoppingCartItem) => void;
   handleFinished: () => void;
 }
 
@@ -32,118 +32,88 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
   setShoppingCartItem,
   handleFinished,
 }) => {
-  if (data === null) return;
+  if (data === null) return null;
 
+  // State to manage accommodation zones
   const [zones, setZones] = useState<AccommodationZone[]>([]);
 
+  // Initialize default zones or restore from cart
   useEffect(() => {
     if (shoppingCartItem && shoppingCartItem.item.id === data.id) {
       setZones(shoppingCartItem.zones);
     } else {
       const dates = generateDateRange(selectedDates.startDate, selectedDates.endDate);
 
-      const defaultZones = dates.map((date) => ({
-        date: dayjsStartDate(date).toDate(),
-        ranges: [{ start: 0, end: 24 }, { start: 72, end: 96 }],
-        sleepTime: 32, // Default sleep duration (8 hours)
-      }));
+      const defaultZones = dates.map((date, index) => {
+        const defaultEndTime = 32; // Default: End time at 8:00 AM
+        let defaultStartTime = defaultEndTime - 32;
 
-      for (let i = 0; i < defaultZones.length; i++) {
-        const currentRange = defaultZones[i].ranges;
-        const nextRange = defaultZones[i + 1] ? defaultZones[i + 1].ranges : [{ start: 0, end: 0 }, { start: 0, end: 0 }];
-        const rangeStart = currentRange[1].end - currentRange[1].start;
-        const rangeEnd = nextRange[0].end - nextRange[0].start;
-
-        const maxSleep = rangeStart + rangeEnd;
-        if (defaultZones[i].sleepTime > maxSleep) {
-          defaultZones[i].sleepTime = maxSleep; // Adjust sleepTime if it exceeds max sleep hours
+        // If it's the first day, start time must be >= 0
+        if (index === 0) {
+          defaultStartTime = Math.max(defaultStartTime, 0);
         }
-      }
+
+        return {
+          date: dayjsStartDate(date).toDate(),
+          ranges: { start: defaultStartTime, end: defaultEndTime },
+        };
+      });
 
       setZones(defaultZones);
     }
-  }, [shoppingCartItem, data.id, selectedDates]);
+  }, [shoppingCartItem, data?.id, selectedDates]);
 
-  const calculateMaxSleepHours = (index: number, range?: Range[]) => {
-    const currentRange = range || zones[index]?.ranges || [{ start: 0, end: 0 }, { start: 0, end: 0 }];
-    const rangeStart = currentRange[1].end - currentRange[1].start;
-    const rangeEnd = zones[index + 1] ? zones[index + 1].ranges[0].end - zones[index + 1].ranges[0].start : 0;
-    return rangeStart + rangeEnd - 1; // Subtract 1 to prevent the overlap
+  // Update end time & automatically adjust start time
+  const handleEndTimeChange = (newEnd: number, index: number) => {
+    setZones((prevZones) =>
+      prevZones.map((z, i) => {
+        if (i === index) {
+          let newStart = newEnd - 32;
+
+          // If it's the first day, ensure start >= 0
+          if (index === 0) {
+            newStart = Math.max(newStart, 0);
+          }
+
+          return {
+            ...z,
+            ranges: { start: newStart, end: newEnd },
+          };
+        }
+        return z;
+      })
+    );
   };
 
+  // Add or remove from cart
   const handleAddToCartClick = () => {
-
+    if (!data) return;
     setShoppingCartItem({
       item: data,
-      zones: zones,
+      zones,
     });
     handleFinished();
   };
 
   const handleRemoveFromCartClick = () => {
     setShoppingCartItem({
-      item: { id: "-1", name: "0", description: "0", tag: "0", business_hour: { start: 0, end: 0 }, image: "0" },
-      zones: []
+      item: {
+        id: "-1",
+        name: "0",
+        description: "0",
+        tag: "0",
+        business_hour: { start: 0, end: 0 },
+        image: "0",
+      },
+      zones: [],
     });
     handleFinished();
-  };
-
-  // Handle range changes and sleep time updates
-  const handleRangeChange = (newRange: Range[], index: number) => {
-    // Get the previous, current, and next ranges
-    const prevRange = zones[index - 1] ? zones[index - 1].ranges : [{ start: 0, end: 0 }, { start: 0, end: 0 }];
-    const currentRange = newRange;
-    const nextRange = zones[index + 1] ? zones[index + 1].ranges : [{ start: 0, end: 0 }, { start: 0, end: 0 }];
-
-    const prevRangeStart = prevRange[1].end - prevRange[1].start;
-    const prevRangeEnd = currentRange[0].end - currentRange[0].start;
-    const currRangeStart = currentRange[1].end - currentRange[1].start;
-    const currRangeEnd = nextRange[0].end - nextRange[0].start;
-
-    const prevMaxSleep = prevRangeStart + prevRangeEnd;
-    const currMaxSleep = currRangeStart + currRangeEnd;
-
-    // Update the range
-    setZones((prevZones) =>
-      prevZones.map((zone, i) =>
-        i === index ? { ...zone, ranges: currentRange } : zone
-      )
-    );
-
-    // If current zone exceeds max sleep, 
-    if (zones[index].sleepTime > currMaxSleep) {
-      // Update current zone's sleep time
-      setZones((prevZones) =>
-        prevZones.map((zone, i) =>
-          i === index ? { ...zone, sleepTime: currMaxSleep } : zone
-        )
-      );
-    }
-
-    // update the previous and current zones
-    if (zones[index - 1] && zones[index - 1].sleepTime > prevMaxSleep) {
-      // Update previous zone's sleep time if needed
-      setZones((prevZones) =>
-        prevZones.map((zone, i) =>
-          i === index - 1 ? { ...zone, sleepTime: prevMaxSleep } : zone
-        )
-      );
-    }
-  };
-
-
-  const handleSleepHoursChange = (newSleepHours: number, index: number) => {
-    setZones((prevZones) =>
-      prevZones.map((zone, i) =>
-        i === index ? { ...zone, sleepTime: newSleepHours } : zone
-      )
-    );
   };
 
   return (
     <Box sx={{ width: "100%", padding: "20px", marginTop: "10px" }}>
       <Grid container spacing={2} alignItems="flex-start">
-        {/* Image */}
+        {/* Image Section */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Box
             component="img"
@@ -153,81 +123,65 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
               width: "100%",
               height: "250px",
               objectFit: "cover",
-              borderRadius: "4px",
+              borderRadius: "8px",
+              boxShadow: 1,
             }}
           />
         </Grid>
 
-        {/* Info */}
-        <Grid size={{ xs: 12, md: 6 }} sx={{ position: "relative" }}>
+        {/* Info Section */}
+        <Grid size={{ xs: 12, md: 6 }}>
           <Box>
-            <Typography variant="h4" component="div" sx={{ fontWeight: "bold", marginBottom: "10px" }}>
+            <Typography variant="h4" sx={{ fontWeight: "bold", mb: 1 }}>
               {data.name}
             </Typography>
-            <Box sx={{ maxHeight: "150px", overflowY: "auto", marginBottom: "10px", paddingRight: "10px" }}>
+            <Box sx={{ maxHeight: "150px", overflowY: "auto", mb: 1, pr: 1 }}>
               <Typography variant="body1">{data.description}</Typography>
             </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ marginBottom: "10px" }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               <strong>Tag:</strong> {data.tag}
             </Typography>
           </Box>
         </Grid>
       </Grid>
 
-      {/* Preferred Visit Time */}
-      <Box sx={{ marginTop: "20px" }}>
-        <Typography variant="h6" sx={{ marginBottom: "10px" }}>
-          Preferred Visit Time
+      {/* Leave Time Section */}
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          Preferred Leave Time
         </Typography>
 
         {zones.map((zone, index) => (
-          <Box key={index} sx={{ marginBottom: "20px" }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid size={{ xs: 12, sm: 2 }}>
-                <Typography variant="body1">{dayjsStartDate(zone.date).format("YYYY-MM-DD")}</Typography>
-              </Grid>
+          <Box
+            key={index}
+            sx={{
+              border: "1px solid #ccc",
+              padding: "12px",
+              borderRadius: "8px",
+              mb: 2,
+              boxShadow: 1,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Typography variant="body1" fontWeight="medium">
+                {dayjsStartDate(zone.date).format("YYYY-MM-DD")}
+              </Typography>
+              <Typography variant="body2" fontWeight="medium">
+                Leave Time:
+              </Typography>
+              <TimePicker
+                time={zone.ranges.end}
+                setTime={(newTime) => handleEndTimeChange(newTime, index)}
+                range={{ start: 0, end: 96 }}
+              />
+            </Box>
 
-              <Grid size={{ xs: 12, sm: 8 }} sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
-                <DualRangeSelectBar
-                  totalSlots={96}
-                  range={zone.ranges}
-                  default_range={[{ start: 0, end: 24 }, { start: 72, end: 96 }]}
-                  setRange={(newRanges: Range[]) => {
-                    handleRangeChange(newRanges, index);
-                  }}
-                  displayFormat={(value) => formatTime(value)}
-                />
-              </Grid>
-
-              {/* Sleep Hour Selector */}
-              <Grid size={{ xs: 12, sm: 2 }}>
-                {index != zones.length - 1 && (
-                  <FormControl fullWidth>
-                    <InputLabel>Sleep Hours</InputLabel>
-                    <Select
-                      value={zone.sleepTime}
-                      label="Sleep Hours"
-                      onChange={(e) => handleSleepHoursChange(Number(e.target.value), index)}
-                      disabled={index === zones.length - 1} // Disable the last zone to prevent editing
-                    >
-                      {/* Dynamically calculate the available sleep hours */}
-                      {[...Array(calculateMaxSleepHours(index))].map((_, i) => (
-                        <MenuItem key={i} value={i + 2}>
-                          {formatTime(i + 2)} hrs
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-
-              </Grid>
-            </Grid>
           </Box>
         ))}
       </Box>
 
-      {/* Error and Add to Cart */}
-      <Box sx={{ marginTop: "20px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px" }}>
+      {/* Action Buttons */}
+      <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end", gap: 2 }}>
         <Button onClick={handleAddToCartClick} color="primary" variant="contained" startIcon={<AddShoppingCartIcon />}>
           Save
         </Button>
@@ -236,7 +190,6 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
             Remove
           </Button>
         )}
-
       </Box>
     </Box>
   );
