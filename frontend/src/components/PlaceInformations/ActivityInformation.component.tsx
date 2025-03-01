@@ -17,7 +17,7 @@ import React, { useEffect, useState } from "react";
 import { Activity } from "../../utils/DataType/place";
 import {
   ActivityShoppingCartItem,
-  ActivityZone,
+  Zone,
 } from "../../utils/DataType/shoppingCart";
 import { dayjsStartDate, formatTime, generateDateRange } from "../../utils/time";
 import TimePicker from "../utils/TimePicker";
@@ -47,7 +47,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   const [specificTimeDates, setSpecificTimeDates] = useState<string[]>([]);
 
   // Zones & stay hours
-  const [zones, setZones] = useState<ActivityZone[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
   const [stayHours, setStayHours] = useState<number>(8); // Default stay time
 
   const [mustGo, setMustGo] = useState<boolean>(false)
@@ -111,7 +111,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
       }
     } else {
       // By default, add one zone for the startDate
-      const defaultZone: ActivityZone = {
+      const defaultZone: Zone = {
         date: dayjsStartDate(selectedDates.startDate).toDate(),
         range: {
           start: data.business_hour.start,
@@ -152,7 +152,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
 
   // Add a new zone row (defaults to the full business hour)
   const handleAddZone = (dateStr: string) => {
-    const newZone: ActivityZone = {
+    const newZone: Zone = {
       date: dayjsStartDate(dateStr).toDate(),
       range: {
         start: data.business_hour.start,
@@ -188,9 +188,13 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
   const handleAddToCartClick = () => {
     if (!selectedDates.startDate || !selectedDates.endDate) return;
 
-    let finalZones: ActivityZone[] = [];
+    const is24Hour = data.business_hour.start === 0 && data.business_hour.end === 96;
+
+    let finalZones: Zone[] = [];
     let selectDateIndexes: number[] = [];
     let selectTimeIndexes: number[] = [];
+
+    let hasError = false; // <-- Error flag to prevent saving
 
     const dateRange = generateDateRange(
       selectedDates.startDate,
@@ -231,12 +235,28 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
             const userZonesForDate = zones.filter(
               (z) => dayjsStartDate(z.date).format("YYYY-MM-DD") === dateStr
             );
+
             finalZones.push(...userZonesForDate);
+
+            // Determine the last day in the date range
+            const lastDay = dayjsStartDate(selectedDates.endDate || undefined).format("YYYY-MM-DD");
+
+            // If the current date is the last day in the range, validate end times
+            if (dateStr === lastDay) {
+              const hasInvalidEndTime = userZonesForDate.some((zone) => zone.range.end > 96);
+
+              if (hasInvalidEndTime) {
+                alert("One or more time slots on the last day exceed the allowed limit.");
+                hasError = true; // <-- Set error flag
+                return;
+              }
+            }
 
             // For each zone, we push its local index in a flattened array
             const timeIndexArray = userZonesForDate.map((_, zIndex) => zIndex);
             selectTimeIndexes = selectTimeIndexes.concat(timeIndexArray);
-          } else {
+          }
+          else {
             // (b) "Specific visit time?" is OFF => single zone with full business hour
             finalZones.push({
               date: dayjsStartDate(d).toDate(),
@@ -251,7 +271,8 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
       });
     }
 
-    const is24Hour = data.business_hour.start === 0 && data.business_hour.end === 96;
+    // Stop execution if there was an error
+    if (hasError) return;
 
     const anyInvalid = finalZones.some((zone) => {
       if (!is24Hour) {
@@ -477,7 +498,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
                                   setSpecificTimeDates((prev) => [...prev, dateStr]);
                                   // If no zones exist for this date, add a default zone
                                   if (zonesForThisDate.length === 0) {
-                                    const newZone: ActivityZone = {
+                                    const newZone: Zone = {
                                       date: dayjsStartDate(d).toDate(),
                                       range: {
                                         start: data.business_hour.start,

@@ -9,9 +9,9 @@ import React, { useEffect, useState } from "react";
 import { Accommodation } from "../../utils/DataType/place";
 import {
   AccommodationShoppingCartItem,
-  AccommodationZone,
+  Zone,
 } from "../../utils/DataType/shoppingCart";
-import { dayjsStartDate, formatTime, generateDateRange } from "../../utils/time";
+import { dayjsStartDate, generateDateRange } from "../../utils/time";
 import DeleteIcon from "@mui/icons-material/Delete";
 
 // Import custom quarter-hour TimePicker
@@ -35,7 +35,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
   if (data === null) return null;
 
   // State to manage accommodation zones
-  const [zones, setZones] = useState<AccommodationZone[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
 
   // Initialize default zones or restore from cart
   useEffect(() => {
@@ -55,7 +55,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
 
         return {
           date: dayjsStartDate(date).toDate(),
-          ranges: { start: defaultStartTime, end: defaultEndTime },
+          range: { start: defaultStartTime, end: defaultEndTime },
         };
       });
 
@@ -77,7 +77,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
 
           return {
             ...z,
-            ranges: { start: newStart, end: newEnd },
+            range: { start: newStart, end: newEnd },
           };
         }
         return z;
@@ -170,7 +170,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
                 Leave Time:
               </Typography>
               <TimePicker
-                time={zone.ranges.end}
+                time={zone.range.end}
                 setTime={(newTime) => handleEndTimeChange(newTime, index)}
                 range={{ start: 0, end: 96 }}
               />

@@ -1,18 +1,13 @@
-import { Activity, Accommodation } from "./place";
+import { Activity, Accommodation, Range } from "./place";
 
-export interface Range {
-  start: number;
-  end: number;
-}
-
-export interface ActivityZone { 
+export interface Zone { 
   date: Date; 
   range: Range; 
 }
 
 export interface ActivityShoppingCartItem {
   item: Activity;
-  zones: ActivityZone[];
+  zones: Zone[];
   stayTime: number;
   must: boolean;
   advance: boolean;
@@ -20,12 +15,21 @@ export interface ActivityShoppingCartItem {
   selectTimeIndexes?: number[];
 }
 
-export interface AccommodationZone { 
-  date: Date; 
-  ranges: Range;
-}
-
 export interface AccommodationShoppingCartItem {
   item: Accommodation;
-  zones: AccommodationZone[];
+  zones: Zone[];
+}
+
+export interface OptimizeRouteData {
+  accommodation: {
+    place_id: string;
+    sleep_times: Range[];
+  };
+  activities: {
+    place_id: string;
+    stay_time: number;
+    visit_range: Range[];
+    must: boolean
+  }[]
+  
 }

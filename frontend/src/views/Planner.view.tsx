@@ -91,7 +91,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
 
         return {
           date: dayjsStartDate(date).toDate(),
-          ranges: [
+          range: [
             {
               start: 0,
               end: 24, // Use business_hour start for morning time
@@ -166,7 +166,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
 
         return {
           date: dayjsStartDate(date).toDate(),
-          ranges: [
+          range: [
             {
               start: 0,
               end: 24, // Use business_hour start for morning time

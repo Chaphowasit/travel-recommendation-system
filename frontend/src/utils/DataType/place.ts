@@ -1,6 +1,6 @@
-export interface BusinessHour {
-    start: number; // 0-96 format
-    end: number; // 0-96 format
+export interface Range {
+    start: number;
+    end: number;
 }
 
 export interface Accommodation {
@@ -8,7 +8,7 @@ export interface Accommodation {
     name: string;
     description: string;
     tag: string;
-    business_hour: BusinessHour;
+    business_hour: Range;
     image: string;
 }
 
@@ -17,7 +17,7 @@ export interface Activity {
     name: string;
     description: string;
     tag: string;
-    business_hour: BusinessHour;
+    business_hour: Range;
     duration: number,
     image: string;
 }
