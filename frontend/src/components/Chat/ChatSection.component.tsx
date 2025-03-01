@@ -47,6 +47,8 @@ const convertToVrpPayload = (
     return adjustedRanges;
   };
 
+  console.log(adjustZonesToRanges(accommodationShoppingCartItem.zones))
+
   return {
     accommodation: {
       place_id: accommodationShoppingCartItem.item.id,

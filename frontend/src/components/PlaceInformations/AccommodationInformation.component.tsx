@@ -65,14 +65,15 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
 
   // Update end time & automatically adjust start time
   const handleEndTimeChange = (newEnd: number, index: number) => {
-    setZones((prevZones) =>
-      prevZones.map((z, i) => {
+    setZones((prevZones) => {
+      const sortedZones = [...prevZones].sort((a, b) => a.date.getTime() - b.date.getTime());
+      return sortedZones.map((z, i) => {
         if (i === index) {
           let newStart = newEnd - 32;
 
           // If it's the first day, ensure start >= 0
           if (index === 0) {
-            newStart = Math.max(newStart, 0);
+            newStart = 0;
           }
 
           return {
@@ -81,7 +82,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
           };
         }
         return z;
-      })
+      })}
     );
   };
 

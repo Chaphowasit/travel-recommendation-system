@@ -92,7 +92,7 @@ const DisplaySchedule: React.FC<DisplayScheduleProps> = ({ routeData }) => {
         const departureDay = Math.floor(item.departure_time / 96);
 
         const arrivalTime = item.arrival_time % 96;
-        const departureTime = item.departure_time % 96;
+        const departureTime = item.departure_time % 96 -1;
 
         if (arrivalDay === departureDay) {
           // If arrival and departure happen on the same day

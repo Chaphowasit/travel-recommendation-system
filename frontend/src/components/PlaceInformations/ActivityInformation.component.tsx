@@ -391,7 +391,7 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
               setTime={handleStayHoursChange}
               range={{
                 start: 1,
-                end: 96,
+                end: data.business_hour.end - data.business_hour.start,
               }}
             />
           </Box>

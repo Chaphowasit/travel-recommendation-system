@@ -31,6 +31,9 @@ class VRPSolver:
         data["time_windows"] = self.data_loader.get_active_times(place_ids)
         data["time_matrix"] = duration_matrix
         data["time_services"] = self.data_loader.get_durations(place_ids)
+        data["musts"] = self.data_loader.get_musts(place_ids)
+        
+        print(data)
         
         return data
 
@@ -139,9 +142,9 @@ class VRPSolver:
         self.add_time_windows_constraints(time_dimension)
         
         # Set mandatory and optional places
-        for i in range(len(self.data["place_ids"])):
+        for i, isMust in enumerate(self.data["musts"]):
             index = self.manager.NodeToIndex(i)
-            if i < self.data["days"]:
+            if isMust:
                 self.routing.AddToAssignment(self.routing.NextVar(index))
             else:
                 self.routing.AddDisjunction([index], 500)
