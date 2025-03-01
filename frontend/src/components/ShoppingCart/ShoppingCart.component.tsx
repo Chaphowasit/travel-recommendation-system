@@ -225,7 +225,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
       </Typography>
       {activityShoppingCartItem.length > 0 ? (
         grouping === "date" ? (
-          Object.keys(groupedActivitiesByDate).map((date) => (
+          Object.keys(groupedActivitiesByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime()).map((date) => (
             <Accordion key={date} defaultExpanded sx={{ marginBottom: "10px" }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6">{`Date: ${date}`}</Typography>
@@ -284,50 +284,52 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
           ))
         ) : (
           <Grid container spacing={2}>
-            {activityShoppingCartItem.map((item, index) => (
-              <Grid key={index} size={{ xs: 12 }}>
-                <Card
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    cursor: "pointer",
-                    boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
-                    overflow: "hidden",
-                  }}
-                  onClick={() => handleSelectActivity(item.item)}
-                >
-                  <Avatar
-                    src={item.item.image}
-                    alt={item.item.name}
-                    sx={{ width: 64, height: 64, margin: "10px" }}
-                  />
-                  <CardContent
+            {[...activityShoppingCartItem]
+              .sort((a, b) => a.item.name.localeCompare(b.item.name))
+              .map((item, index) => (
+                <Grid key={index} size={{ xs: 12 }}>
+                  <Card
                     sx={{
-                      paddingLeft: "10px",
+                      display: "flex",
+                      alignItems: "center",
+                      cursor: "pointer",
+                      boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
                       overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      flex: 1,
                     }}
+                    onClick={() => handleSelectActivity(item.item)}
                   >
-                    <Typography variant="h6" noWrap>
-                      {item.item.name}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
+                    <Avatar
+                      src={item.item.image}
+                      alt={item.item.name}
+                      sx={{ width: 64, height: 64, margin: "10px" }}
+                    />
+                    <CardContent
                       sx={{
+                        paddingLeft: "10px",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
+                        flex: 1,
                       }}
                     >
-                      {item.item.description}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+                      <Typography variant="h6" noWrap>
+                        {item.item.name}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {item.item.description}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
           </Grid>
         )
       ) : (
