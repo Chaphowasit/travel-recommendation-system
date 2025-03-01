@@ -75,7 +75,7 @@ def send_message():
             return jsonify({"user_message": response})
 
         logger.info("Recommendation intent detected")
-
+        weaviate_adapter.connect()
         with MariaDB_Adaptor() as mariadb_session:
             activity_response_json, accommodation_response_json = fetch_place_detail(
                 message, weaviate_adapter, mariadb_session
@@ -94,8 +94,7 @@ def send_message():
             "accommodations": accommodation_response_json,
             "activities": activity_response_json,
         }
-        if weaviate_adapter.client is not None:
-            weaviate_adapter.close()
+        weaviate_adapter.close()
         logger.debug(f"Response generated: {result}")
         return jsonify(result)
 
@@ -121,13 +120,14 @@ def fetch_mariadb():
         place_ids_list = place_ids.split(",")
 
         # Fetch place details from the MariaDB_Adaptor
-        accommodation_place_details = mariadb_adaptor.fetch_accommodations(
-            place_ids=place_ids_list
-        )
+        with MariaDB_Adaptor() as mariadb_adaptor:
+            accommodation_place_details = mariadb_adaptor.fetch_accommodations(
+                place_ids=place_ids_list
+            )
 
-        activity_place_details = mariadb_adaptor.fetch_activities(
-            place_ids=place_ids_list
-        )
+            activity_place_details = mariadb_adaptor.fetch_activities(
+                place_ids=place_ids_list
+            )
 
         # Initialize the transformed data structure as a list
         result = []
