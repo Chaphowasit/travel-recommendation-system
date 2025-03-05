@@ -78,7 +78,7 @@ class DataLoader:
             visit_time[activity_id] = [
                 (
                     time_range[0],
-                    max(time_range[1] - stay_time, time_range[0]),
+                    time_range[0] + 1 if time_range[1] - stay_time <= time_range[0] else time_range[1] - stay_time,
                 )
                 for time_range in get_union(visit_time[activity_id])
             ]
@@ -98,7 +98,7 @@ class DataLoader:
         sleepTimes = self.data["accommodation"]["sleep_times"]
         days = self.get_days()
 
-        night_time = [[(sleepTime["start"], sleepTime["end"])] for sleepTime in sleepTimes]
+        night_time = [[(sleepTime["start"], sleepTime["start"]+1)] for sleepTime in sleepTimes]
                 
         night_time[0].append((days *96, days*96))
         
