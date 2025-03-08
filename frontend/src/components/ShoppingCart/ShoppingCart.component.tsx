@@ -347,7 +347,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
         </Grid>
       )}
 
-      {accommodationShoppingCartItem.item.id !== "-1" && activityShoppingCartItem.length >= 0 && (
+      {accommodationShoppingCartItem.item.id !== "-1" && activityShoppingCartItem.length > 0 && (
         <Box
           sx={{
             position: "sticky",

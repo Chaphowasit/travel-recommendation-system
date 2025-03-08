@@ -110,8 +110,6 @@ def fetch_mariadb():
         # Get the 'place_ids' parameter from the query string
         place_ids = request.args.get("place_ids")
 
-        print(place_ids)
-
         # Ensure place_ids is provided
         if not place_ids:
             return jsonify({"error": "place_ids parameter is required"}), 400
@@ -144,7 +142,6 @@ def fetch_mariadb():
             result.append(entry)
 
         # Return the transformed data as a JSON array
-        print(result)
         return jsonify(result)
 
     except Exception as e:

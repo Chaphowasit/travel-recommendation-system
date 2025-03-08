@@ -47,7 +47,5 @@ class MapBox:
 
         data = response.json()
         durations = data.get("durations")
-        
-        print(data)
 
         return durations

@@ -37,7 +37,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
   const [messages, setMessages] = useState<Message[]>([]);
 
   const [accommodationShoppingCartItem, setAccommodationShoppingCartItem] = useState<AccommodationShoppingCartItem>({
-    item: {id: "-1", name: "0", description: "0", tag: "0", business_hour: {start: 0, end: 0}, image: "0" },
+    item: { id: "-1", name: "0", description: "0", tag: "0", business_hour: { start: 0, end: 0 }, image: "0" },
     zones: []
   });
   const [activityShoppingCartItem, setActivityShoppingCartItem] = useState<ActivityShoppingCartItem[]>([]);
@@ -47,9 +47,11 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
     let newEndDate = selectedDates.endDate;
 
     // Get current duration
-    const duration = Math.round(
-      (selectedDates.endDate.getTime() - selectedDates.startDate.getTime()) / (24 * 60 * 60 * 1000)
-    ) + 1;
+    const duration =
+      Math.round(
+        (selectedDates.endDate.getTime() - selectedDates.startDate.getTime()) /
+        (24 * 60 * 60 * 1000)
+      ) + 1;
 
     if (key === "startDate") {
       // Convert to local timezone, remove time (set to 00:00:00)
@@ -62,7 +64,8 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
     // Update selected dates
     setSelectedDates(newStartDate, newEndDate);
 
-    const updatedActivityCart = activityShoppingCartItem
+    // Update activity shopping cart
+    const updatedActivityCart: ActivityShoppingCartItem[] = activityShoppingCartItem
       .map((cartItem) => ({
         ...cartItem,
         zones: cartItem.zones.filter((zone) => {
@@ -78,34 +81,27 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
       // Generate the complete date range
       const dates = generateDateRange(newStartDate, newEndDate);
 
-      // Build the full zones array by keeping existing zones and creating new ones where needed
+      // Build the full zones array
       const updatedAccommodationZones = dates.map((date) => {
         const existingZone = accommodationShoppingCartItem.zones.find(
           (zone) => dayjsStartDate(zone.date).isSame(dayjsStartDate(date))
         );
 
         if (existingZone) {
-          // Keep the existing zone
           return existingZone;
         }
 
         return {
           date: dayjsStartDate(date).toDate(),
-          range: [
-            {
-              start: 0,
-              end: 24, // Use business_hour start for morning time
-            }, {
-              start: 72,   // Use business_hour end for evening time
-              end: 96,   // Use business_hour end for evening time
-            }
-          ],
-          sleepTime: 32,  // Default sleep time (8 hours)
+          range: {
+            start: 0,
+            end: 32,
+          },
         };
       });
 
-      // Update accommodation shopping cart
-      const updatedAccommodationCart = {
+      // Ensure type correctness
+      const updatedAccommodationCart: AccommodationShoppingCartItem = {
         ...accommodationShoppingCartItem,
         zones: updatedAccommodationZones,
       };
@@ -113,6 +109,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
       setAccommodationShoppingCartItem(updatedAccommodationCart);
     }
   };
+
 
   const [duration, setDuration] = useState<number>((selectedDates.endDate.getTime() - selectedDates.startDate.getTime()) / (24 * 60 * 60 * 1000) + 1);
 
@@ -122,7 +119,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
 
     if (newDuration < 1 || newDuration > 5) return; // Ensure valid duration range (1-5)
 
-    // Update the state for duration (if you have it)
+    // Update the state for duration
     setDuration(newDuration);
 
     // Ensure endDate is at the end of the last selected day
@@ -134,18 +131,18 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
     setSelectedDates(selectedDates.startDate, newEndDate);
 
     // Correct cart filtering: Ensure it does not remove items from the last valid day
-    const updatedActivityCart = activityShoppingCartItem
+    const updatedActivityCart: ActivityShoppingCartItem[] = activityShoppingCartItem
       .map((cartItem) => ({
         ...cartItem,
         zones: cartItem.zones.filter((zone) => {
           const zoneDate = new Date(zone.date);
           return (
             zoneDate >= selectedDates.startDate &&
-            zoneDate <= newEndDate // ✅ Fix: Include full last day
+            zoneDate <= newEndDate
           );
         }),
       }))
-      .filter((cartItem) => cartItem.zones.length > 0); // ✅ Only keep items with valid zones
+      .filter((cartItem) => cartItem.zones.length > 0);
 
     setActivityShoppingCartItem(updatedActivityCart);
 
@@ -153,34 +150,27 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
       // Generate the complete date range
       const dates = generateDateRange(selectedDates.startDate, newEndDate);
 
-      // Build the full zones array by keeping existing zones and creating new ones where needed
+      // Build the full zones array
       const updatedAccommodationZones = dates.map((date) => {
         const existingZone = accommodationShoppingCartItem.zones.find(
           (zone) => dayjsStartDate(zone.date).isSame(dayjsStartDate(date))
         );
 
         if (existingZone) {
-          // Keep the existing zone
           return existingZone;
         }
 
         return {
           date: dayjsStartDate(date).toDate(),
-          range: [
-            {
-              start: 0,
-              end: 24, // Use business_hour start for morning time
-            }, {
-              start: 72,   // Use business_hour end for evening time
-              end: 96,   // Use business_hour end for evening time
-            }
-          ],
-          sleepTime: 32,  // Default sleep time (8 hours)
+          range: {
+            start: 0,
+            end: 32,
+          },
         };
       });
 
-      // Update accommodation shopping cart
-      const updatedAccommodationCart = {
+      // Ensure type correctness
+      const updatedAccommodationCart: AccommodationShoppingCartItem = {
         ...accommodationShoppingCartItem,
         zones: updatedAccommodationZones,
       };
@@ -188,6 +178,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
       setAccommodationShoppingCartItem(updatedAccommodationCart);
     }
   };
+
 
   const [requestCallValue, setRequestCallValue] = useState<CALL_ACCOMMODATION | CALL_ACTIVITY | GENERATE_ROUTE | null>(null)
 
@@ -315,7 +306,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
                     accommodationShoppingCartItem={accommodationShoppingCartItem}
                     setAccommodationShoppingCartItem={setAccommodationShoppingCartItem}
                     requestCallValue={requestCallValue}
-                    clearRequestCallValue={() => {setRequestCallValue(null)}}
+                    clearRequestCallValue={() => { setRequestCallValue(null) }}
                   />
                 </Box>
               </Box>
@@ -366,7 +357,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
                   selectedDates={selectedDates}
                   requestCall={(requestCall) => { setRequestCallValue(requestCall) }}
                 />
-                
+
               </Box>
             </Box>
           </Grid>
