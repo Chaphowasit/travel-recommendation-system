@@ -47,7 +47,7 @@ const convertToVrpPayload = (
     return adjustedRanges;
   };
 
-  console.log(adjustZonesToRanges(accommodationShoppingCartItem.zones))
+  console.log(adjustZonesToRanges(accommodationShoppingCartItem.zones));
 
   return {
     accommodation: {
@@ -63,8 +63,6 @@ const convertToVrpPayload = (
   };
 };
 
-
-
 const ChatSection: React.FC<ChatSectionProps> = ({
   messages,
   setMessages,
@@ -74,15 +72,26 @@ const ChatSection: React.FC<ChatSectionProps> = ({
   accommodationShoppingCartItem,
   setAccommodationShoppingCartItem,
   requestCallValue,
-  clearRequestCallValue }) => {
+  clearRequestCallValue
+}) => {
   const [loading, setLoading] = useState<boolean>(false);
+
+  // Add a placeholder message when the chat initializes and no messages are present
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([{ sender: 'bot', text: "Lorem ipsum dolor sit amet consectetur adipisicing elit. Totam eum, doloribus corrupti facilis autem, eveniet adipisci possimus, praesentium ex in vero unde nisi mollitia aperiam quas excepturi laboriosam explicabo! Nesciunt iure autem et atque non cumque expedita sunt repudiandae distinctio, fugit obcaecati debitis. Rem repellat id sint aut quae nisi quod alias ea, magni numquam repudiandae mollitia qui similique corrupti optio illo, corporis fugiat necessitatibus ullam debitis expedita. Eum sint perferendis placeat incidunt nesciunt ipsam adipisci quia esse illum aliquid ab veritatis molestiae possimus odit, quod in delectus a atque ipsum vitae. Provident totam deleniti iusto eius ipsa? Quod, laboriosam!" }]);
+    }
+  }, []); // Run only on mount
 
   const handleSendMessage = (text: string) => {
     switch (text) {
-      case GENERATE_ROUTE_MESSAGE: onSend(GENERATE_ROUTE_MESSAGE, convertToVrpPayload(activityShoppingCartItem, accommodationShoppingCartItem)); break;
-      default: onSend(text)
+      case GENERATE_ROUTE_MESSAGE:
+        onSend(GENERATE_ROUTE_MESSAGE, convertToVrpPayload(activityShoppingCartItem, accommodationShoppingCartItem));
+        break;
+      default:
+        onSend(text);
     }
-  }
+  };
 
   const onSend = useCallback((text: string, note_payload?: Object) => {
     if (loading) return;
@@ -100,13 +109,12 @@ const ChatSection: React.FC<ChatSectionProps> = ({
           ...prevMessages,
           {
             sender: 'bot',
-            text: response.data?.user_message || 'Sorry, I didn\'t get that.',
+            text: response.data?.user_message || "Sorry, I didn't get that.",
             accommodations: response.data?.accommodations,
             activities: response.data?.activities,
             route: response.data?.route
           },
         ]);
-
       })
       .catch((error) => {
         console.error('Error sending message:', error);
@@ -119,20 +127,26 @@ const ChatSection: React.FC<ChatSectionProps> = ({
         setLoading(false);
       });
 
-    return true
+    return true;
   }, [loading, setMessages]);
 
   useEffect(() => {
     if (!requestCallValue) return;
 
     switch (requestCallValue) {
-      case CALL_ACCOMMODATION: handleSendMessage(CALL_ACCOMMODATION_MESSAGE); break;
-      case CALL_ACTIVITY: handleSendMessage(CALL_ACTIVITY_MESSAGE); break;
-      case GENERATE_ROUTE: handleSendMessage(GENERATE_ROUTE_MESSAGE); break;
+      case CALL_ACCOMMODATION:
+        handleSendMessage(CALL_ACCOMMODATION_MESSAGE);
+        break;
+      case CALL_ACTIVITY:
+        handleSendMessage(CALL_ACTIVITY_MESSAGE);
+        break;
+      case GENERATE_ROUTE:
+        handleSendMessage(GENERATE_ROUTE_MESSAGE);
+        break;
     }
 
-    clearRequestCallValue()
-  }, [requestCallValue])
+    clearRequestCallValue();
+  }, [requestCallValue]);
 
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [accommodationDialogOpen, setAccommodationDialogOpen] = useState(false);
@@ -152,16 +166,14 @@ const ChatSection: React.FC<ChatSectionProps> = ({
   const handleSelectActivity = (activity: Activity) => {
     setActivityDialogOpen(true);
     setSelectedActivity(activity);
-    handleCloseAccommodationDialog()
+    handleCloseAccommodationDialog();
   };
 
   const handleSelectAccommodation = (accommodation: Accommodation) => {
     setAccommodationDialogOpen(true);
     setSelectedAccommodation(accommodation);
-    handleCloseActivityDialog()
+    handleCloseActivityDialog();
   };
-
-
 
   return (
     <>
@@ -175,62 +187,48 @@ const ChatSection: React.FC<ChatSectionProps> = ({
         <InputBox onSend={handleSendMessage} loading={loading} />
       </Box>
 
-      {/* activity dialog */}
+      {/* Activity Dialog */}
       <Dialog open={activityDialogOpen} onClose={handleCloseActivityDialog} fullWidth maxWidth="md">
         <DialogContent>
-          {/* Close Button */}
           <Box sx={{ display: "flex", justifyContent: "flex-end", mb: -2 }}>
             <IconButton onClick={handleCloseActivityDialog} sx={{ color: "#000", padding: 0 }}>
               <CloseIcon />
             </IconButton>
           </Box>
-
-          {/* Title based on Type */}
           <Typography variant="h5" sx={{ mb: 2, fontWeight: "bold" }}>
             Activity Details
           </Typography>
-
-          {/* Information Section */}
           <ActivityInformation
             data={selectedActivity}
             selectedDates={selectedDates}
-            shoppingCartItem={activityShoppingCartItem}  // Correct for activities
+            shoppingCartItem={activityShoppingCartItem}
             setShoppingCartItem={setActivityShoppingCartItem}
             handleFinished={handleCloseActivityDialog}
           />
-
-
         </DialogContent>
       </Dialog>
 
-      {/* activity dialog */}
+      {/* Accommodation Dialog */}
       <Dialog open={accommodationDialogOpen} onClose={handleCloseAccommodationDialog} fullWidth maxWidth="md">
         <DialogContent>
-          {/* Close Button */}
           <Box sx={{ display: "flex", justifyContent: "flex-end", mb: -2 }}>
             <IconButton onClick={handleCloseAccommodationDialog} sx={{ color: "#000", padding: 0 }}>
               <CloseIcon />
             </IconButton>
           </Box>
-
-          {/* Title based on Type */}
           <Typography variant="h5" sx={{ mb: 2, fontWeight: "bold" }}>
             Accommodation Details
           </Typography>
-
-          {/* Information Section */}
           <AccommodationInformation
             data={selectedAccommodation}
-            selectedDates={selectedDates} // Pass correct dates
-            shoppingCartItem={accommodationShoppingCartItem}  // Correct prop for accommodations
+            selectedDates={selectedDates}
+            shoppingCartItem={accommodationShoppingCartItem}
             setShoppingCartItem={setAccommodationShoppingCartItem}
             handleFinished={handleCloseAccommodationDialog}
           />
-
         </DialogContent>
       </Dialog>
     </>
-
   );
 };
 

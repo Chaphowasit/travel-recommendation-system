@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Box, Divider, Paper, Typography, Button } from '@mui/material';
+import { Box, Divider, Paper, Typography, Button, Avatar } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import ReactMarkdown from 'react-markdown';
@@ -11,32 +11,21 @@ import { Accommodation, Activity } from '../../utils/DataType/place';
 import { RouteData } from '../../utils/DataType/route';
 import { convertExcelToImage, export_to_excel } from '../../utils/export_route';
 
-interface ChatWindowProps {
-  selectedDates: { startDate: Date; endDate: Date };
-  messages: Message[];
-  setActivity: (activity: Activity) => void;
-  setAccommodation: (accommodation: Accommodation) => void;
-}
-
 /**
  * handleDownloadRoute:
  * - Uses export_to_excel() to create an Excel Blob from routeData.
  * - Creates a temporary link and triggers a download of the file.
  */
 const handleDownloadRoute = (start_date: Date, end_date: Date, routeData: RouteData) => {
-
   export_to_excel(start_date, end_date, routeData)
     .then((blob: Blob) => {
-      // Create a temporary URL for the Blob
       const url = URL.createObjectURL(blob);
-      // Create a temporary link element
       const link = document.createElement("a");
       link.href = url;
       link.download = "route.xlsx";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      // Release the object URL after the download
       URL.revokeObjectURL(url);
     })
     .catch((error) => {
@@ -68,7 +57,7 @@ const ExcelImage: React.FC<{ selectedDates: { startDate: Date; endDate: Date }, 
       }
     };
     generateImage();
-  }, [routeData]);
+  }, [routeData, selectedDates]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -78,6 +67,13 @@ const ExcelImage: React.FC<{ selectedDates: { startDate: Date; endDate: Date }, 
   }
   return <img src={imageUrl!} alt="Excel representation of route data" />;
 };
+
+interface ChatWindowProps {
+  selectedDates: { startDate: Date; endDate: Date };
+  messages: Message[];
+  setActivity: (activity: Activity) => void;
+  setAccommodation: (accommodation: Accommodation) => void;
+}
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setActivity, setAccommodation }) => {
   const theme = useTheme();
@@ -119,21 +115,35 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setAct
           key={index}
           sx={{
             display: 'flex',
-            justifyContent: message.sender === 'user' ? 'flex-end' : 'flex-start',
+            flexDirection: message.sender === 'user' ? 'row-reverse' : 'row',
+            alignItems: 'flex-start',
             marginBottom: 1,
           }}
         >
+          {message.sender !== 'user' && (
+            <Avatar
+              sx={{ marginRight: 1, transform: 'translateY(8px)' }}
+              src="/bot.png"
+              alt="Bot Icon"
+            />
+          )}
           <Paper
             sx={{
-              padding: 2,
+              paddingX: 2,
+              paddingY: message.sender !== 'user' ? -1 : 2,
               backgroundColor: message.sender === 'user' ? '#daf8da' : '#f1f1f1',
               maxWidth: isSmallScreen ? '100%' : '90%',
-              width: 'auto',
               wordWrap: 'break-word',
               overflowWrap: 'break-word',
             }}
           >
-            <ReactMarkdown children={message.text} remarkPlugins={[remarkGfm]} />
+            {message.sender === 'user' ? (
+              <Typography sx={{ whiteSpace: 'pre-wrap' }}>
+                {message.text}
+              </Typography>
+            ) : (
+              <ReactMarkdown children={message.text} remarkPlugins={[remarkGfm]} />
+            )}
 
             {(message.accommodations || message.activities) && <Divider />}
 
@@ -147,6 +157,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setAct
                     display: 'flex',
                     overflowX: 'auto',
                     maxWidth: '100%',
+                    padding: 2,
                     '&::-webkit-scrollbar': {
                       height: '6px',
                     },
@@ -157,7 +168,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setAct
                     '&::-webkit-scrollbar-track': {
                       backgroundColor: '#f0f0f0',
                     },
-                    padding: 2,
                   }}
                 >
                   {message.accommodations.map((accommodation) => (
@@ -182,6 +192,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setAct
                     display: 'flex',
                     overflowX: 'auto',
                     maxWidth: '100%',
+                    padding: 2,
                     '&::-webkit-scrollbar': {
                       height: '6px',
                     },
@@ -192,7 +203,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setAct
                     '&::-webkit-scrollbar-track': {
                       backgroundColor: '#f0f0f0',
                     },
-                    padding: 2,
                   }}
                 >
                   {message.activities.map((activity) => (
@@ -211,11 +221,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setAct
               <>
                 <Divider />
                 <Box sx={{ marginTop: 2 }}>
-                  {/* Instead of DisplaySchedule, we show the Excel image */}
                   <ExcelImage selectedDates={selectedDates} routeData={message.route} />
                 </Box>
-
-                {/* Download Button for Route */}
                 <Box sx={{ marginTop: 2, textAlign: 'center' }}>
                   <Button
                     variant="contained"
