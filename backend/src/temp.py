@@ -119,25 +119,14 @@ class Chatbot:
             result = step["messages"][-1]
         return result["content"]
 
-    async def async_wrapper(self, generator):
-        """
-        Wrap a generator to allow for async iteration.
-
-        Args:
-            generator: The generator to be wrapped for async iteration.
-
-        Yields:
-            item: Each item yielded by the generator, asynchronously.
-        """
-        for item in generator:
-            yield item
-            await asyncio.sleep(0)
-
-    async def response_s(self, msg, payload):
+    def response_s(self, msg, payload):
+        # state = State(messages=[{"role": "user", "content": msg}], payload=payload)
+        # for message, _ in self.graph.stream(state, stream_mode="message", config=self.config):
+        #     yield(message + "|")
         state = State(messages=[{"role": "user", "content": msg}], payload=payload)
-        async for message, _ in self.async_wrapper(self.graph.stream(state, stream_mode="message", config=self.config)):
-            print(message.content, end="|", flush=True)
-            send(message)
+        for step in self.graph.stream(state, stream_mode="values", config=self.config):
+            result = step["messages"][-1]
+            yield result["content"]
     
     
 
@@ -161,19 +150,9 @@ class Chatbot:
             emit('message', {"error": "An error occurred while processing the request."})
 
 
-@app.route('/justHtmlForTest')
+@app.route('/page')
 def index():
     return render_template('index.html')
-
-# Event to handle the connection
-@socketio.on('connect')
-def handle_connect():
-    print("Client connected")
-
-# Event to handle disconnection
-@socketio.on('disconnect')
-def handle_disconnect():
-    print("Client disconnected")
 
 payload = {
     "accommodation": {
@@ -203,7 +182,7 @@ payload = {
                     "end": 192
                 }
             ],
-            "must": "false"
+            "must": False
         },
         {
             "place_id": "A0736",
@@ -218,7 +197,7 @@ payload = {
                     "end": 172
                 }
             ],
-            "must": "false"
+            "must": False
         },
         {
             "place_id": "A0265",
@@ -233,7 +212,7 @@ payload = {
                     "end": 164
                 }
             ],
-            "must": "false"
+            "must": False
         },
         {
             "place_id": "A0314",
@@ -248,16 +227,32 @@ payload = {
                     "end": 184
                 }
             ],
-            "must": "false"
+            "must": False
         }
     ]
 }
 
+# Event to handle the connection
+@socketio.on('connect')
+def handle_connect():
+    print("Client connected")
+
+# Event to handle disconnection
+@socketio.on('disconnect')
+def handle_disconnect():
+    print("Client disconnected")
+    
 @socketio.on('message')
-def streaming_message(message):
-    print(f"Received message: {message}")
+def handle_message(message):
+    socketio.emit('message', f"User: {message}")
+    
+    response = chatbot.response_s(message, payload)
+    for item in response:
+        socketio.emit('message', str(item))
+        socketio.sleep(0.1)
+    # send(message, broadcast=True)
     # Run response_s in the background, since it's async
-    socketio.start_background_task(chatbot.response_s, message, payload)
+    # socketio.start_background_task(chatbot.response_s, message, payload)
     
 
 @app.route('/get-message', methods=['POST'])
