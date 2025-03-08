@@ -4,8 +4,6 @@ from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
-from langchain_core.messages import AIMessage
-import asyncio
 import os
 import uuid
 from controllers.ventical_n_day.vrp import VRPSolver
@@ -14,7 +12,6 @@ from adapters.Weaviate import Weaviate_Adapter
 from adapters.MariaDB import MariaDB_Adaptor
 from common.mariadb_schema import Base
 from flask_socketio import SocketIO, emit, send
-import traceback
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +22,8 @@ socketio = SocketIO(app)
 class State(MessagesState):
     payload: Dict
     messages: List[Dict]
+    state_name: str
+    result: any
 
 class Chatbot:
     def __init__(self, weaviate_adapter, mariadb_adaptor):
@@ -34,6 +33,7 @@ class Chatbot:
         self.config = {"configurable": {"thread_id": str(uuid.uuid4())}}
         self.weaviate_adapter = weaviate_adapter
         self.mariadb_adaptor = mariadb_adaptor
+
     def classify_intent(self, state: State) -> Dict:
         """Classifies user intent and returns a dictionary with the intent category."""
         user_message = state["messages"][-1]["content"]
@@ -54,7 +54,7 @@ class Chatbot:
         """
         response = self.llm.invoke(prompt)
         intent = response.content.strip().lower()
-        return {"intent": intent, "messages": [{"role": "system", "content": {"message": user_message, "intent" : intent}}]}
+        return {"state_name": "intent classification", "intent": intent, "messages": [{"role": "system", "content": {"message": user_message, "intent" : intent}}]}
 
     def retrieve(self, state: State):
         """Fetch recommended places based on user query."""
@@ -67,16 +67,17 @@ class Chatbot:
             )
             for category, items in data.items() for item in items
         ]
-        response = "\n".join([doc.page_content for doc in retrieved_docs])
-        return {"messages": [{"role": "system", "content": response}]}
+        # response = "\n".join([doc.page_content for doc in retrieved_docs])
+        response = "Here is your place!!!"
+        return {"state_name": "retrieve activities and places", "result": data, "messages": [{"role": "system", "content": response}]}
 
     def generate_route(self, state: State):
         """Generates an optimized travel route."""
         payload = state["payload"]
         vrp_solver = VRPSolver(payload)
         vrp_result = vrp_solver.solve()
-        response = "Here's your optimize traveling route!!!\n\n" + str(vrp_result)
-        return {"messages": [{"role": "system", "content": response}]}
+        # response = "Here's your optimize traveling route!!!\n\n" + str(vrp_result)
+        return {"state_name": "Generate route", "result": vrp_result, "messages": [{"role": "system", "content": "Here's your optimize traveling route!!!"}]}
 
     def handle_general(self, state: State):
         """Handles general travel and unrelated questions."""
@@ -87,7 +88,7 @@ class Chatbot:
             response = response.content
         else:
             response = f"That's an interesting! But let's talk about travel!"
-        return {"messages": [{"role": "system", "content": response}]}
+        return {"state_name":"general answer", "messages": [{"role": "system", "content": response}]}
 
     def _build_graph(self):
         workflow = StateGraph(State)
@@ -120,19 +121,15 @@ class Chatbot:
         return result["content"]
 
     def response_s(self, msg, payload):
-        # state = State(messages=[{"role": "user", "content": msg}], payload=payload)
-        # for message, _ in self.graph.stream(state, stream_mode="message", config=self.config):
-        #     yield(message + "|")
-        state = State(messages=[{"role": "user", "content": msg}], payload=payload)
+        state = State(state_name="init", messages=[{"role": "user", "content": msg}], payload=payload)
         for step in self.graph.stream(state, stream_mode="values", config=self.config):
             result = step["messages"][-1]
-            yield result["content"]
-    
-    
-
+            print(f"\n{step}\n")
+            yield step
+            
     async def handle_message(self, data):
         """Handles WebSocket message and streams GPT response."""
-        state = State(messages=[{"role": "user", "content": data.get("message", "")}], payload=data.get("payload", {}))
+        state = State(state_name="initial state", messages=[{"role": "user", "content": data.get("message", "")}], payload=data.get("payload", {}))
         try:
             # Create an async generator that will yield responses as the GPT model streams
             async def stream_gpt_response():
@@ -248,13 +245,19 @@ def handle_message(message):
     
     response = chatbot.response_s(message, payload)
     for item in response:
-        socketio.emit('message', str(item))
-        socketio.sleep(0.1)
-    # send(message, broadcast=True)
-    # Run response_s in the background, since it's async
-    # socketio.start_background_task(chatbot.response_s, message, payload)
+        state_name = item.get("state_name", "None")
+        result = item.get("result", "None")
+        graph_message = item.get("messages", "None")
+        socketio.emit('message', f"currently working at {state_name}")
+        socketio.emit('message', f"                                 ")
+        socketio.sleep(0.2)
+        socketio.emit('message', f"get a result {result}")
+        socketio.emit('message', f"                                 ")
+        socketio.sleep(0.2)
+        socketio.emit('message', f"where gen ai response {graph_message}")
+        socketio.emit('message', f"=====================================")
+        socketio.sleep(0.2)
     
-
 @app.route('/get-message', methods=['POST'])
 def get_message():
     data = request.json
