@@ -167,6 +167,7 @@ const ChatSection: React.FC<ChatSectionProps> = ({
     <>
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <ChatWindow
+          selectedDates={selectedDates}
           messages={messages}
           setActivity={handleSelectActivity}
           setAccommodation={handleSelectAccommodation}
