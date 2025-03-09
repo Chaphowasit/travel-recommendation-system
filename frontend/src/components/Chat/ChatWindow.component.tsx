@@ -4,6 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import DownloadIcon from '@mui/icons-material/Download';
 import { Message } from '../../utils/DataType/message';
 import AccommodationCard from '../PlaceInformations/AccommodationCard.component';
 import ActivityCard from '../PlaceInformations/ActivityCard.component';
@@ -95,7 +96,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setAct
         maxHeight: '100vh',
         overflowY: 'auto',
         padding: 2,
-        backgroundColor: '#fff',
+        backgroundColor: '#fafafa',
         scrollbarWidth: 'thin',
         scrollbarColor: '#ccc #f0f0f0',
         '&::-webkit-scrollbar': {
@@ -112,31 +113,70 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setAct
     >
       {messages.map((message, index) => (
         <Box
-          key={index}
-          sx={{
-            display: 'flex',
-            flexDirection: message.sender === 'user' ? 'row-reverse' : 'row',
-            alignItems: 'flex-start',
-            marginBottom: 1,
-          }}
-        >
-          {message.sender !== 'user' && (
-            <Avatar
-              sx={{ marginRight: 1, transform: 'translateY(8px)' }}
-              src="/bot.png"
-              alt="Bot Icon"
-            />
-          )}
-          <Paper
-            sx={{
-              paddingX: 2,
-              paddingY: message.sender !== 'user' ? -1 : 2,
-              backgroundColor: message.sender === 'user' ? '#daf8da' : '#f1f1f1',
-              maxWidth: isSmallScreen ? '100%' : '90%',
-              wordWrap: 'break-word',
-              overflowWrap: 'break-word',
-            }}
-          >
+  key={index}
+  sx={{
+    display: 'flex',
+    flexDirection: message.sender === 'user' ? 'row-reverse' : 'row',
+    alignItems: 'flex-start',
+    marginBottom: 1,
+  }}
+>
+  {/* Avatar for both user and bot, but switch src and margins */}
+  <Avatar
+    sx={{
+      marginRight: message.sender === 'user' ? 0 : 1,
+      marginLeft: message.sender === 'user' ? 1 : 0,
+      transform: 'translateY(8px)',
+    }}
+    src={message.sender === 'user' ? '/user.png' : '/bot.png'}
+    alt={message.sender === 'user' ? 'User Icon' : 'Bot Icon'}
+  />
+
+<Paper
+  sx={{
+    position: 'relative',
+    marginY: 1,
+    marginX: 1,
+    paddingX: 2,
+    paddingY: message.sender !== 'user' ? -1 : 2,
+    background:
+      message.sender === 'user'
+        ? 'rgb(163, 234, 255)' // Vibrant blue gradient
+        : 'rgba(255, 255, 255)', // Soft glass effect
+    backdropFilter: message.sender === 'user' ? 'none' : 'blur(10px)',
+    maxWidth: isSmallScreen ? '100%' : '80%',
+    wordWrap: 'break-word',
+    overflowWrap: 'break-word',
+    borderRadius: '16px',
+    color: message.sender === 'user' ? '#333' : '#333',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+
+    ...(message.sender !== 'user' && {
+      '&::after': {
+        content: '""',
+        position: 'absolute',
+        top: 12,
+        left: -12,
+        borderTop: '8px solid transparent',
+        borderBottom: '8px solid transparent',
+        borderRight: '16px solid rgba(255, 255, 255)',
+      },
+    }),
+    ...(message.sender === 'user' && {
+      '&::after': {
+        content: '""',
+        position: 'absolute',
+        top: 12,
+        right: -12,
+        borderTop: '8px solid transparent',
+        borderBottom: '8px solid transparent',
+        borderLeft: '16px solid rgb(163, 234, 255)',
+      },
+    }),
+  }}
+>
+
+
             {message.sender === 'user' ? (
               <Typography sx={{ whiteSpace: 'pre-wrap' }}>
                 {message.text}
@@ -226,8 +266,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setAct
                 <Box sx={{ marginTop: 2, textAlign: 'center' }}>
                   <Button
                     variant="contained"
-                    color="primary"
+                    startIcon={<DownloadIcon />}
                     onClick={() => handleDownloadRoute(selectedDates.startDate, selectedDates.endDate, message.route!)}
+                    sx={{
+                      background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                      boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                      fontWeight: 'bold',
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      padding: '8px 16px',
+                      transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                      '&:hover': {
+                        transform: 'scale(1.05)',
+                        boxShadow: '0 5px 8px 3px rgba(33, 203, 243, .3)',
+                      },
+                    }}
                   >
                     Download Route
                   </Button>

@@ -9,6 +9,7 @@ import { CALL_ACCOMMODATION, CALL_ACCOMMODATION_MESSAGE, CALL_ACTIVITY, CALL_ACT
 import AccommodationInformation from "../PlaceInformations/AccommodationInformation.component";
 import ActivityInformation from "../PlaceInformations/ActivityInformation.component";
 import { Accommodation, Activity, Range } from "../../utils/DataType/place";
+import { dayjsStartDate, generateDateRange } from "../../utils/time";
 
 interface ChatSectionProps {
   messages: Message[];
@@ -24,30 +25,38 @@ interface ChatSectionProps {
 
 const convertToVrpPayload = (
   activityShoppingCartItems: ActivityShoppingCartItem[],
-  accommodationShoppingCartItem: AccommodationShoppingCartItem
+  accommodationShoppingCartItem: AccommodationShoppingCartItem,
+  selectedDates: { startDate: Date; endDate: Date }
 ): OptimizeRouteData => {
   // Helper function that adjusts zone ranges using the same algorithm
   const adjustZonesToRanges = (zones: Zone[]): Range[] => {
     if (!zones || zones.length === 0) return [];
 
+    // Generate an array of days (formatted as "YYYY-MM-DD") from selectedDates global variable
+    const days = generateDateRange(selectedDates.startDate, selectedDates.endDate);
+    const adjustedRanges: Range[] = [];
+
+    // Sort zones by their date for consistent ordering
     const sortedZones = [...zones].sort((a, b) => a.date.getTime() - b.date.getTime());
-    let currentDate = sortedZones[0].date;
-    let offsetMultiplier = 0;
-    const adjustedRanges = sortedZones.map(zone => {
-      if (zone.date.getTime() !== currentDate.getTime()) {
-        offsetMultiplier++;
-        currentDate = zone.date;
-      }
-      return {
-        start: zone.range.start + 96 * offsetMultiplier,
-        end: zone.range.end + 96 * offsetMultiplier,
-      };
-    });
+
+    // Loop through each day in the generated date range.
+    for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
+      const dayStr = days[dayIndex];
+      // Filter zones that fall on this day.
+      // Here we assume `zone.date` is a Date object and use Day.js to format it.
+      const zonesForDay = sortedZones.filter(zone => dayjsStartDate(zone.date).format("YYYY-MM-DD") === dayStr);
+
+      // For each zone on the day, adjust its range using the day's index as the offset multiplier.
+      zonesForDay.forEach(zone => {
+        adjustedRanges.push({
+          start: zone.range.start + 96 * dayIndex,
+          end: zone.range.end + 96 * dayIndex,
+        });
+      });
+    }
 
     return adjustedRanges;
   };
-
-  console.log(adjustZonesToRanges(accommodationShoppingCartItem.zones));
 
   return {
     accommodation: {
@@ -76,17 +85,10 @@ const ChatSection: React.FC<ChatSectionProps> = ({
 }) => {
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Add a placeholder message when the chat initializes and no messages are present
-  useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([{ sender: 'bot', text: "Lorem ipsum dolor sit amet consectetur adipisicing elit. Totam eum, doloribus corrupti facilis autem, eveniet adipisci possimus, praesentium ex in vero unde nisi mollitia aperiam quas excepturi laboriosam explicabo! Nesciunt iure autem et atque non cumque expedita sunt repudiandae distinctio, fugit obcaecati debitis. Rem repellat id sint aut quae nisi quod alias ea, magni numquam repudiandae mollitia qui similique corrupti optio illo, corporis fugiat necessitatibus ullam debitis expedita. Eum sint perferendis placeat incidunt nesciunt ipsam adipisci quia esse illum aliquid ab veritatis molestiae possimus odit, quod in delectus a atque ipsum vitae. Provident totam deleniti iusto eius ipsa? Quod, laboriosam!" }]);
-    }
-  }, []); // Run only on mount
-
   const handleSendMessage = (text: string) => {
     switch (text) {
       case GENERATE_ROUTE_MESSAGE:
-        onSend(GENERATE_ROUTE_MESSAGE, convertToVrpPayload(activityShoppingCartItem, accommodationShoppingCartItem));
+        onSend(GENERATE_ROUTE_MESSAGE, convertToVrpPayload(activityShoppingCartItem, accommodationShoppingCartItem, selectedDates));
         break;
       default:
         onSend(text);
@@ -174,6 +176,8 @@ const ChatSection: React.FC<ChatSectionProps> = ({
     setSelectedAccommodation(accommodation);
     handleCloseActivityDialog();
   };
+
+
 
   return (
     <>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FormControl, Select, MenuItem, Typography } from "@mui/material";
+import { Box, FormControl, Select, MenuItem, Typography } from "@mui/material";
 
 type Range = {
   start: number; // 0..96, represents quarter-hour index
@@ -82,10 +82,16 @@ const TimePicker: React.FC<TimePickerProps> = ({
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <Typography>Hour</Typography>
-      <FormControl size="small">
-        <Select value={hour} onChange={(e) => handleHourChange(e.target.value as number)}>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, backgroundColor: "#fafafa", padding: "8px", borderRadius: "8px" }}>
+      <Typography variant="body1" sx={{ color: "#333" }}>
+        Hour
+      </Typography>
+      <FormControl size="small" sx={{ minWidth: 60 }}>
+        <Select
+          value={hour}
+          onChange={(e) => handleHourChange(e.target.value as number)}
+          sx={{ color: "#333" }}
+        >
           {validHours.map((h) => (
             <MenuItem key={h} value={h}>
               {h.toString().padStart(2, "0")}
@@ -93,12 +99,18 @@ const TimePicker: React.FC<TimePickerProps> = ({
           ))}
         </Select>
       </FormControl>
-
-      <Typography>:</Typography>
-
-      <Typography>Minute</Typography>
-      <FormControl size="small">
-        <Select value={minute} onChange={(e) => handleMinuteChange(e.target.value as number)}>
+      <Typography variant="body1" sx={{ color: "#333" }}>
+        :
+      </Typography>
+      <Typography variant="body1" sx={{ color: "#333" }}>
+        Minute
+      </Typography>
+      <FormControl size="small" sx={{ minWidth: 60 }}>
+        <Select
+          value={minute}
+          onChange={(e) => handleMinuteChange(e.target.value as number)}
+          sx={{ color: "#333" }}
+        >
           {validMinutesForHour(hour).map((m) => (
             <MenuItem key={m} value={m}>
               {m.toString().padStart(2, "0")}
@@ -106,7 +118,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
           ))}
         </Select>
       </FormControl>
-    </div>
+    </Box>
   );
 };
 
