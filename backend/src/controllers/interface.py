@@ -3,13 +3,15 @@ from adapters.MariaDB import MariaDB_Adaptor
 from common.mariadb_schema import Accommodation, Activity
 from controllers.chatbot import Chatbot
 from common.utils import rename_field
-
+import json
 chatbot = Chatbot()
 
 
 def fetch_place_detail(
     message: str, weaviate_adapter: Weaviate_Adapter, mariadb_adaptor: MariaDB_Adaptor
 ):
+    weaviate_adapter.connect()
+    
     # Fetch and process activity recommendations
     activity_response_json = weaviate_adapter.remove_dup_and_get_id(
         collection_name="Activity_Embedded",
@@ -27,6 +29,8 @@ def fetch_place_detail(
         bridge_name="Accommodation_Bridge",
         id_property="accommodation_id",
     )
+
+    weaviate_adapter.close()
 
     # Step 1: Sort the JSON responses by score
     activity_response_json.sort(key=lambda x: x.get("score", 0), reverse=True)
@@ -90,7 +94,15 @@ def fetch_place_detail(
                 {"description": place["description"], "about_and_tags": place["tag"]},
             )
 
-    return activities, accommodations
+    output_data = {
+        "activities": activities,
+        "accommodations": accommodations
+    }
+
+    with open("place_details.json", "w", encoding="utf-8") as file:
+        json.dump(output_data, file, ensure_ascii=False, indent=4)
+
+    return activities, accommodations, output_data
 
 
 # Summarize descriptions in the response
