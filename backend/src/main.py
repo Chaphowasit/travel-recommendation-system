@@ -236,8 +236,9 @@ def handle_disconnect():
     
 @socketio.on('message')
 def handle_message(message):
+    print(message)
     for response in streaming_chatbot.response(message.get("text", ""), message.get("payload", {})):
-        socketio.emit("message", str(response))
+        socketio.emit("message", response)
 
 if __name__ == "__main__":
     # Initialize dependencies

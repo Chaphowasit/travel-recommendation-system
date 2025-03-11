@@ -110,10 +110,10 @@ const ChatSection: React.FC<ChatSectionProps> = ({
           const updatedMessages = [...prevMessages];
           updatedMessages[updatedMessages.length - 1] = {
             ...updatedMessages[updatedMessages.length - 1],
-            text: response.message || updatedMessages[updatedMessages.length - 1].text,
-            accommodations: response.result?.accommodations,
-            activities: response.result?.activities,
-            route: response.result,
+            text: updatedMessages[updatedMessages.length - 1].text + (response.message || "") || updatedMessages[updatedMessages.length - 1].text,
+            accommodations: response.recommendations?.accommodations || updatedMessages[updatedMessages.length - 1].accommodations,
+            activities: response.recommendations?.activities || updatedMessages[updatedMessages.length - 1].activities,
+            route: response.route || updatedMessages[updatedMessages.length - 1].route,
             state: response.state_name
           };
           return updatedMessages;
@@ -123,9 +123,9 @@ const ChatSection: React.FC<ChatSectionProps> = ({
           {
             sender: 'bot',
             text: response.message || "",
-            accommodations: response.result?.accommodations,
-            activities: response.result?.activities,
-            route: response.result,
+            accommodations: response.recommendations?.accommodations,
+            activities: response.recommendations?.activities,
+            route: response.route,
             state: response.state_name
           },
         ];

@@ -158,9 +158,10 @@ class StreamingChatbot:
             system_prompt = "You are an AI assistant that summarizes information, answers user queries, and generates engaging text efficiently."
         else:
             if content == "etc_other":
-                system_prompt = "You are a creative AI assistant skilled in answering user queries and generating engaging text."
+                system_prompt = "You are a creative AI assistant skilled in answering user queries"
             elif content == "etc_travel":
-                system_prompt = "You are a creative AI assistant skilled in answering user queries and generating engaging text."
+                system_prompt = "You are a creative AI assistant skilled in answering user queries"
+            content = user_input
 
         for chunk in chat_model.stream(
             [
