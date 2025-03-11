@@ -17,7 +17,8 @@ export const GENERATE_ROUTE_MESSAGE = "Generate route from my note"
 export interface Message {
     sender: string;
     text: string;
-    accommodations?: Accommodation[],  
-    activities?: Activity[],
-    route?: RouteData
+    accommodations?: Accommodation[];
+    activities?: Activity[];
+    route?: RouteData;
+    state?: string;
 }

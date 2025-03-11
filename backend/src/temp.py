@@ -4,8 +4,6 @@ from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
-from langchain_core.messages import AIMessage
-import asyncio
 import os
 import uuid
 from controllers.ventical_n_day.vrp import VRPSolver
@@ -14,7 +12,8 @@ from adapters.Weaviate import Weaviate_Adapter
 from adapters.MariaDB import MariaDB_Adaptor
 from common.mariadb_schema import Base
 from flask_socketio import SocketIO, emit, send
-import traceback
+
+NEXT_STATE_NAME = ""
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +24,8 @@ socketio = SocketIO(app)
 class State(MessagesState):
     payload: Dict
     messages: List[Dict]
+    state_name: str
+    result: any
 
 class Chatbot:
     def __init__(self, weaviate_adapter, mariadb_adaptor):
@@ -34,8 +35,10 @@ class Chatbot:
         self.config = {"configurable": {"thread_id": str(uuid.uuid4())}}
         self.weaviate_adapter = weaviate_adapter
         self.mariadb_adaptor = mariadb_adaptor
+
     def classify_intent(self, state: State) -> Dict:
         """Classifies user intent and returns a dictionary with the intent category."""
+        
         user_message = state["messages"][-1]["content"]
         prompt = f"""
         Classify the user message into one of the following categories:
@@ -54,11 +57,22 @@ class Chatbot:
         """
         response = self.llm.invoke(prompt)
         intent = response.content.strip().lower()
-        return {"intent": intent, "messages": [{"role": "system", "content": {"message": user_message, "intent" : intent}}]}
+
+        global NEXT_STATE_NAME
+        if intent == "retrieve":
+            NEXT_STATE_NAME = "retrieve activities and places"
+        elif intent == "generate_route":
+            NEXT_STATE_NAME = "generate route"
+        elif intent == "etc_travel" or intent == "etc_other":
+            NEXT_STATE_NAME = "general answer"
+        
+        return {"state_name": "intent classification", "intent": intent, "messages": [{"role": "system", "content": user_message, "intent" : intent}]}
 
     def retrieve(self, state: State):
         """Fetch recommended places based on user query."""
-        query = state["messages"][-1]["content"]["message"]
+        global NEXT_STATE_NAME
+        NEXT_STATE_NAME = "summarize the place"
+        query = state["messages"][-1]["content"]
         _, _, data = fetch_place_detail(query, self.weaviate_adapter, self.mariadb_adaptor)
         retrieved_docs = [
             Document(
@@ -67,27 +81,32 @@ class Chatbot:
             )
             for category, items in data.items() for item in items
         ]
-        response = "\n".join([doc.page_content for doc in retrieved_docs])
-        return {"messages": [{"role": "system", "content": response}]}
+        # response = "\n".join([doc.page_content for doc in retrieved_docs])
+        response = "Here is your place!!!"
+        return {"state_name": "retrieve activities and places", "result": data, "messages": [{"role": "system", "content": response}]}
 
     def generate_route(self, state: State):
         """Generates an optimized travel route."""
+        global NEXT_STATE_NAME
+        NEXT_STATE_NAME = "response route"
         payload = state["payload"]
         vrp_solver = VRPSolver(payload)
         vrp_result = vrp_solver.solve()
-        response = "Here's your optimize traveling route!!!\n\n" + str(vrp_result)
-        return {"messages": [{"role": "system", "content": response}]}
+        # response = "Here's your optimize traveling route!!!\n\n" + str(vrp_result)
+        return {"state_name": "Generate route", "result": vrp_result, "messages": [{"role": "system", "content": "Here's your optimize traveling route!!!"}]}
 
     def handle_general(self, state: State):
+        global NEXT_STATE_NAME
+        NEXT_STATE_NAME = "answer general question"
         """Handles general travel and unrelated questions."""
-        intent = state["messages"][-1]["content"]["intent"]
-        message = state["messages"][-1]["content"]["message"]
+        intent = state["messages"][-1]["intent"]
+        message = state["messages"][-1]["content"]
         if intent == "etc_travel":
             response = self.llm.invoke(message)
             response = response.content
         else:
             response = f"That's an interesting! But let's talk about travel!"
-        return {"messages": [{"role": "system", "content": response}]}
+        return {"state_name":"general answer", "messages": [{"role": "system", "content": response}]}
 
     def _build_graph(self):
         workflow = StateGraph(State)
@@ -119,61 +138,23 @@ class Chatbot:
             result = step["messages"][-1]
         return result["content"]
 
-    async def async_wrapper(self, generator):
-        """
-        Wrap a generator to allow for async iteration.
-
-        Args:
-            generator: The generator to be wrapped for async iteration.
-
-        Yields:
-            item: Each item yielded by the generator, asynchronously.
-        """
-        for item in generator:
-            yield item
-            await asyncio.sleep(0)
-
-    async def response_s(self, msg, payload):
-        state = State(messages=[{"role": "user", "content": msg}], payload=payload)
-        async for message, _ in self.async_wrapper(self.graph.stream(state, stream_mode="message", config=self.config)):
-            print(message.content, end="|", flush=True)
-            send(message)
-    
-    
-
-    async def handle_message(self, data):
-        """Handles WebSocket message and streams GPT response."""
-        state = State(messages=[{"role": "user", "content": data.get("message", "")}], payload=data.get("payload", {}))
-        try:
-            # Create an async generator that will yield responses as the GPT model streams
-            async def stream_gpt_response():
-                async for step in await self.graph.stream(state, stream_mode="values", config=self.config):
-                    result = step["messages"][-1]
-                    content = result["content"]
-                    yield content  # Yield each chunk of the streaming response
-
-            # Send each streaming chunk to the client
-            async for chunk in stream_gpt_response():
-                emit('message', {'content': chunk})
-
-        except Exception as e:
-            print(f"Error in WebSocket stream: {e}", exc_info=True)
-            emit('message', {"error": "An error occurred while processing the request."})
+    def response_s(self, msg, payload):
+        global NEXT_STATE_NAME
+        NEXT_STATE_NAME = "intent classification"
+        state = State(state_name="init", messages=[{"role": "user", "content": msg}], payload=payload)
+        yield {"state" : "init"}
+        for step in self.graph.stream(state, stream_mode="values", config=self.config):
+            lastest_step = step
+            print(f"\n{step}\n")
+            yield {"state" : NEXT_STATE_NAME}
+            yield {"result" : step}
+        
+        yield {"result": lastest_step, "message": lastest_step["messages"][-1]["content"]}
 
 
-@app.route('/justHtmlForTest')
+@app.route('/page')
 def index():
     return render_template('index.html')
-
-# Event to handle the connection
-@socketio.on('connect')
-def handle_connect():
-    print("Client connected")
-
-# Event to handle disconnection
-@socketio.on('disconnect')
-def handle_disconnect():
-    print("Client disconnected")
 
 payload = {
     "accommodation": {
@@ -203,7 +184,7 @@ payload = {
                     "end": 192
                 }
             ],
-            "must": "false"
+            "must": False
         },
         {
             "place_id": "A0736",
@@ -218,7 +199,7 @@ payload = {
                     "end": 172
                 }
             ],
-            "must": "false"
+            "must": False
         },
         {
             "place_id": "A0265",
@@ -233,7 +214,7 @@ payload = {
                     "end": 164
                 }
             ],
-            "must": "false"
+            "must": False
         },
         {
             "place_id": "A0314",
@@ -248,18 +229,69 @@ payload = {
                     "end": 184
                 }
             ],
-            "must": "false"
+            "must": False
         }
     ]
 }
 
-@socketio.on('message')
-def streaming_message(message):
-    print(f"Received message: {message}")
-    # Run response_s in the background, since it's async
-    socketio.start_background_task(chatbot.response_s, message, payload)
-    
+# Event to handle the connection
+@socketio.on('connect')
+def handle_connect():
+    print("Client connected")
 
+# Event to handle disconnection
+@socketio.on('disconnect')
+def handle_disconnect():
+    print("Client disconnected")
+    
+@socketio.on('message')
+def handle_message(message):
+    socketio.emit('message', f"User: {message}")
+    response = chatbot.response_s(message, payload)
+    state_name = ""
+    for item in response:
+        response = dict()
+        state = item.get("state", None)
+        if state:
+            state_name = state
+            continue
+        else:
+            graph_result = item.get("result", None)
+            message = item.get("message", None)
+
+            if graph_result:
+                result = graph_result.get("result", None)
+
+            # if state_name:
+            response["state_name"] = state_name
+            # socketio.emit('message', f"bot: Thinking... ({state_name})")
+            # socketio.emit('message', f"                                 ")
+            # socketio.sleep(0.2)
+            if graph_result and result:
+                if state_name == "summarize the place":
+                    response["recommendations"] = result
+                elif state_name == "response route":
+                    response["route"] = result
+                else:
+                    response["result"] = result
+                # socketio.emit('message', f"bot: Thinking... ({state_name})")
+                # socketio.emit('message', f"bot: Here is your result -> {result}")
+            if message:
+                response["message"] = message
+                # socketio.emit('message', f"bot: {message}")
+            socketio.emit("message", str(response))
+        # socketio.emit('message', f"++++++++++++++++++++++++++++++++++++++")   
+        # if state_name == "summarize the place":
+        #     recommendation = result
+        # elif state_name == "response route":
+        #     route = result
+        
+        # response = {"message": message, "state_name": state_name, "recommendations": recommendation, "route": route}
+        # socketio.emit("message", str(response))
+        # socketio.emit('message', f"++++++++++++++++++++++++++++++++++++++")
+    socketio.emit('message', f"=====================================")
+    socketio.sleep(0.2)
+    
 @app.route('/get-message', methods=['POST'])
 def get_message():
     data = request.json

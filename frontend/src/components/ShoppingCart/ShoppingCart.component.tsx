@@ -22,7 +22,7 @@ import ActivityInformation from "../PlaceInformations/ActivityInformation.compon
 import AccommodationInformation from "../PlaceInformations/AccommodationInformation.component";
 import { Accommodation, Activity } from "../../utils/DataType/place";
 import { CALL_ACCOMMODATION, CALL_ACTIVITY, GENERATE_ROUTE } from "../../utils/DataType/message";
-import { ActivityShoppingCartItem, AccommodationShoppingCartItem } from "../../utils/DataType/shoppingCart";
+import { ActivityShoppingCartItem, AccommodationShoppingCartItem, validatePayload } from "../../utils/DataType/shoppingCart";
 import { dayjsStartDate, formatTime } from "../../utils/time";
 
 interface FlattenedShoppingCartItem {
@@ -38,7 +38,6 @@ interface ShoppingCartProps {
   selectedDates: { startDate: Date; endDate: Date };
   requestCall: (request: CALL_ACCOMMODATION | CALL_ACTIVITY | GENERATE_ROUTE) => void;
 }
-
 
 const ShoppingCart: React.FC<ShoppingCartProps> = ({
   activityShoppingCartItem,
@@ -103,11 +102,11 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
           acc[dateStr].push({ item: cartItem.item, zone: flattenedZone });
         };
 
-        // Split if the range ends after 95 (indicating it spills into the next day)
+        // Split if the range ends after 96 (indicating it spills into the next day)
         if (zone.range.end > 96) {
-          // Current day: from original start until 95
+          // Current day: from original start until 96
           processZone(zone.date, zone.range.start, 96);
-          // Next day: from 0 until the remaining time (zone.range.end - 95)
+          // Next day: from 0 until the remaining time (zone.range.end - 96)
           const nextDay = new Date(zone.date);
           nextDay.setDate(nextDay.getDate() + 1);
           processZone(nextDay, 0, zone.range.end - 96);
@@ -135,7 +134,27 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
   );
 
   return (
-    <Box sx={{ width: "100%", height: "100%", padding: "20px" }}>
+    <Box
+      sx={{
+        width: "100%",
+        height: "100%",
+        padding: "20px",
+        backgroundColor: "#fafafa",
+        overflowY: "auto",
+        scrollbarWidth: "thin",
+        scrollbarColor: "#ccc #f0f0f0",
+        "&::-webkit-scrollbar": {
+          width: "6px",
+        },
+        "&::-webkit-scrollbar-thumb": {
+          backgroundColor: "#ccc",
+          borderRadius: "4px",
+        },
+        "&::-webkit-scrollbar-track": {
+          backgroundColor: "#f0f0f0",
+        },
+      }}
+    >
       {/* Toggle between grouping */}
       <Box sx={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
         <ToggleButtonGroup
@@ -165,7 +184,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
                 display: "flex",
                 alignItems: "center",
                 cursor: "pointer",
-                boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
                 overflow: "hidden",
               }}
               onClick={() => handleSelectAccommodation(accommodationShoppingCartItem.item)}
@@ -225,63 +244,65 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
       </Typography>
       {activityShoppingCartItem.length > 0 ? (
         grouping === "date" ? (
-          Object.keys(groupedActivitiesByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime()).map((date) => (
-            <Accordion key={date} defaultExpanded sx={{ marginBottom: "10px" }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6">{`Date: ${date}`}</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Grid container spacing={2}>
-                  {groupedActivitiesByDate[date].map((groupedItem, index) => (
-                    <Grid key={index} size={{ xs: 12 }}>
-                      <Card
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          cursor: "pointer",
-                          boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
-                          overflow: "hidden",
-                        }}
-                        onClick={() => handleSelectActivity(groupedItem.item)}
-                      >
-                        <Avatar
-                          src={groupedItem.item.image}
-                          alt={groupedItem.item.name}
-                          sx={{ width: 64, height: 64, margin: "10px" }}
-                        />
-                        <CardContent
+          Object.keys(groupedActivitiesByDate)
+            .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+            .map((date) => (
+              <Accordion key={date} defaultExpanded sx={{ marginBottom: "10px" }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="h6">{`Date: ${date}`}</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    {groupedActivitiesByDate[date].map((groupedItem, index) => (
+                      <Grid key={index} size={{ xs: 12 }}>
+                        <Card
                           sx={{
-                            paddingLeft: "10px",
+                            display: "flex",
+                            alignItems: "center",
+                            cursor: "pointer",
+                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
                             overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            flex: 1,
                           }}
+                          onClick={() => handleSelectActivity(groupedItem.item)}
                         >
-                          <Typography variant="h6" noWrap>
-                            {groupedItem.item.name}
-                          </Typography>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
+                          <Avatar
+                            src={groupedItem.item.image}
+                            alt={groupedItem.item.name}
+                            sx={{ width: 64, height: 64, margin: "10px" }}
+                          />
+                          <CardContent
                             sx={{
+                              paddingLeft: "10px",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
                               whiteSpace: "nowrap",
+                              flex: 1,
                             }}
                           >
-                            {`Time: ${formatTime(groupedItem.zone.start)} - ${formatTime(
-                              groupedItem.zone.end
-                            )}`}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              </AccordionDetails>
-            </Accordion>
-          ))
+                            <Typography variant="h6" noWrap>
+                              {groupedItem.item.name}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {`Time: ${formatTime(groupedItem.zone.start)} - ${formatTime(
+                                groupedItem.zone.end
+                              )}`}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+            ))
         ) : (
           <Grid container spacing={2}>
             {[...activityShoppingCartItem]
@@ -293,7 +314,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
                       display: "flex",
                       alignItems: "center",
                       cursor: "pointer",
-                      boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
+                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
                       overflow: "hidden",
                     }}
                     onClick={() => handleSelectActivity(item.item)}
@@ -339,7 +360,11 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
               <Typography variant="body2" color="text.secondary">
                 No activities selected.
               </Typography>
-              <Button variant="outlined" sx={{ marginTop: "10px" }} onClick={() => requestCall(CALL_ACTIVITY)}>
+              <Button
+                variant="outlined"
+                sx={{ marginTop: "10px" }}
+                onClick={() => requestCall(CALL_ACTIVITY)}
+              >
                 Select Activities
               </Button>
             </Box>
@@ -361,14 +386,31 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
         >
           <Button
             variant="contained"
-            color="primary"
             onClick={() => {
+              // Assume activityShoppingCartItems and accommodationShoppingCartItem are available in this scope
+              const { result, reason } = validatePayload(activityShoppingCartItem, accommodationShoppingCartItem);
+              if (!result) {
+                // You could use your preferred method for displaying error messages (alert, toast, etc.)
+                alert(reason);
+                return;
+              }
               requestCall(GENERATE_ROUTE);
             }}
+            disabled={validatePayload(activityShoppingCartItem, accommodationShoppingCartItem).result === false}
             sx={{
               width: "200px",
               padding: "10px 20px",
               fontSize: "16px",
+              background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+              boxShadow: "0 3px 5px 2px rgba(33, 203, 243, .3)",
+              fontWeight: "bold",
+              borderRadius: "8px",
+              textTransform: "none",
+              transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+              "&:hover": {
+                transform: "scale(1.05)",
+                boxShadow: "0 5px 8px 3px rgba(33, 203, 243, .3)",
+              },
             }}
           >
             Checkout

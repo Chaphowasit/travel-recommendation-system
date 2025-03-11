@@ -1,7 +1,7 @@
 import {
   Typography,
   Box,
-  Grid2 as Grid,
+  Grid,
   Button,
 } from "@mui/material";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
@@ -34,10 +34,8 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
 }) => {
   if (data === null) return null;
 
-  // State to manage accommodation zones
   const [zones, setZones] = useState<Zone[]>([]);
 
-  // Initialize default zones or restore from cart
   useEffect(() => {
     if (shoppingCartItem && shoppingCartItem.item.id === data.id) {
       setZones(shoppingCartItem.zones);
@@ -45,10 +43,9 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
       const dates = generateDateRange(selectedDates.startDate, selectedDates.endDate);
 
       const defaultZones = dates.map((date, index) => {
-        const defaultEndTime = 32; // Default: End time at 8:00 AM
+        const defaultEndTime = 32;
         let defaultStartTime = defaultEndTime - 32;
 
-        // If it's the first day, start time must be >= 0
         if (index === 0) {
           defaultStartTime = Math.max(defaultStartTime, 0);
         }
@@ -63,36 +60,17 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
     }
   }, [shoppingCartItem, data?.id, selectedDates]);
 
-  // Update end time & automatically adjust start time
   const handleEndTimeChange = (newEnd: number, index: number) => {
-    setZones((prevZones) => {
-      const sortedZones = [...prevZones].sort((a, b) => a.date.getTime() - b.date.getTime());
-      return sortedZones.map((z, i) => {
-        if (i === index) {
-          let newStart = newEnd - 32;
-
-          // If it's the first day, ensure start >= 0
-          if (index === 0) {
-            newStart = 0;
-          }
-
-          return {
-            ...z,
-            range: { start: newStart, end: newEnd },
-          };
-        }
-        return z;
-      })}
+    setZones((prevZones) =>
+      prevZones.map((z, i) =>
+        i === index ? { ...z, range: { start: Math.max(0, newEnd - 32), end: newEnd } } : z
+      )
     );
   };
 
-  // Add or remove from cart
   const handleAddToCartClick = () => {
     if (!data) return;
-    setShoppingCartItem({
-      item: data,
-      zones,
-    });
+    setShoppingCartItem({ item: data, zones });
     handleFinished();
   };
 
@@ -115,7 +93,7 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
     <Box sx={{ width: "100%", padding: "20px", marginTop: "10px" }}>
       <Grid container spacing={2} alignItems="flex-start">
         {/* Image Section */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Box
             component="img"
             src={data.image}
@@ -124,19 +102,29 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
               width: "100%",
               height: "250px",
               objectFit: "cover",
-              borderRadius: "8px",
-              boxShadow: 1,
+              borderRadius: "12px",
+              boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
             }}
           />
         </Grid>
 
         {/* Info Section */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Box>
             <Typography variant="h4" sx={{ fontWeight: "bold", mb: 1 }}>
               {data.name}
             </Typography>
-            <Box sx={{ maxHeight: "150px", overflowY: "auto", mb: 1, pr: 1 }}>
+            <Box
+              sx={{
+                maxHeight: "150px",
+                overflowY: "auto",
+                marginBottom: "10px",
+                padding: "10px",
+                borderRadius: "8px",
+                backgroundColor: "#fafafa",
+                boxShadow: "inset 0px 2px 5px rgba(0,0,0,0.1)",
+              }}
+            >
               <Typography variant="body1">{data.description}</Typography>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -160,7 +148,11 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
               padding: "12px",
               borderRadius: "8px",
               mb: 2,
-              boxShadow: 1,
+              boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)",
+              transition: "0.2s ease-in-out",
+              "&:hover": {
+                boxShadow: "0 4px 10px rgba(0, 0, 0, 0.2)",
+              },
             }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -176,18 +168,53 @@ const AccommodationInformation: React.FC<AccommodationInformationProps> = ({
                 range={{ start: 0, end: 96 }}
               />
             </Box>
-
           </Box>
         ))}
       </Box>
 
       {/* Action Buttons */}
       <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end", gap: 2 }}>
-        <Button onClick={handleAddToCartClick} color="primary" variant="contained" startIcon={<AddShoppingCartIcon />}>
+        <Button
+          onClick={handleAddToCartClick}
+          color="primary"
+          variant="contained"
+          startIcon={<AddShoppingCartIcon />}
+          sx={{
+            background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+            boxShadow: "0 3px 5px 2px rgba(33, 203, 243, .3)",
+            fontWeight: "bold",
+            borderRadius: "8px",
+            textTransform: "none",
+            padding: "8px 16px",
+            transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+            "&:hover": {
+              transform: "scale(1.05)",
+              boxShadow: "0 5px 8px 3px rgba(33, 203, 243, .3)",
+            },
+          }}
+        >
           Save
         </Button>
         {shoppingCartItem?.item.id !== "-1" && shoppingCartItem?.item.id === data.id && (
-          <Button onClick={handleRemoveFromCartClick} color="error" variant="contained" startIcon={<DeleteIcon />}>
+          <Button
+            onClick={handleRemoveFromCartClick}
+            color="error"
+            variant="contained"
+            startIcon={<DeleteIcon />}
+            sx={{
+              background: "linear-gradient(45deg, #ff5252 30%, #ff1744 90%)",
+              boxShadow: "0 3px 5px 2px rgba(255, 82, 82, .3)",
+              fontWeight: "bold",
+              borderRadius: "8px",
+              textTransform: "none",
+              padding: "8px 16px",
+              transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+              "&:hover": {
+                transform: "scale(1.05)",
+                boxShadow: "0 5px 8px 3px rgba(255, 82, 82, .3)",
+              },
+            }}
+          >
             Remove
           </Button>
         )}

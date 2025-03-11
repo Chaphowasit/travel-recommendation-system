@@ -15,13 +15,16 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({ accommodation, on
         flexDirection: "column",
         width: "100%",
         maxWidth: "350px",
-        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
-        height: "280px",
-        transition: "transform 0.3s, background-color 0.3s",
+        boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+        height: "290px",
+        borderRadius: "12px",
+        border: "1px solid #ccc",
+        transition: "transform 0.3s ease-in-out, background-color 0.3s ease-in-out, box-shadow 0.3s",
         ":hover": {
-          backgroundColor: "#e0e0e0",
+          backgroundColor: "#f5f5f5",
           transform: "scale(1.05)",
           cursor: "pointer",
+          boxShadow: "0px 6px 15px rgba(0, 0, 0, 0.15)",
         },
       }}
       onClick={onClick}
@@ -30,10 +33,15 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({ accommodation, on
         component="img"
         image={accommodation.image}
         alt={accommodation.name}
-        sx={{ height: "120px", objectFit: "cover" }}
+        sx={{
+          height: "140px",
+          objectFit: "cover",
+          borderTopLeftRadius: "12px",
+          borderTopRightRadius: "12px",
+        }}
       />
-      <CardContent>
-        <Typography variant="h6" sx={{ fontSize: "1rem", fontWeight: "bold" }}>
+      <CardContent sx={{ padding: "12px", flexGrow: 1 }}>
+        <Typography variant="h6" sx={{ fontSize: "1rem", fontWeight: "bold", color: "#333" }}>
           {accommodation.name}
         </Typography>
         <Typography
@@ -45,6 +53,8 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({ accommodation, on
             display: "-webkit-box",
             WebkitLineClamp: 3,
             WebkitBoxOrient: "vertical",
+            marginTop: "5px",
+            fontSize: "0.9rem",
           }}
         >
           {accommodation.description}

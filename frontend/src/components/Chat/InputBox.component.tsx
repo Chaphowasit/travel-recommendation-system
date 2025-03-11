@@ -25,24 +25,18 @@ const InputBox: React.FC<InputBoxProps> = ({ onSend, loading }) => {
     }
   }, [loading]);
 
-  const scrollbarStyles = {
-    scrollbarWidth: 'thin', // Firefox
-    scrollbarColor: '#ccc #f0f0f0', // Firefox
-    '&::-webkit-scrollbar': {
-      width: '6px', // Width of the scrollbar
-    },
-    '&::-webkit-scrollbar-thumb': {
-      backgroundColor: '#ccc', // Color of the scrollbar thumb
-      borderRadius: '4px', // Round the corners of the scrollbar thumb
-    },
-    '&::-webkit-scrollbar-track': {
-      backgroundColor: '#f0f0f0', // Background of the scrollbar track
-    },
-  };
-
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', padding: 1, borderTop: '1px solid #ccc', backgroundColor: '#f0f0f0' }}>
-      <ChatIcon sx={{ marginRight: 1 }} />
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        padding: 1,
+        borderTop: '1px solid #ccc',
+        backgroundColor: '#f9f9f9',
+      }}
+    >
+      <ChatIcon sx={{ marginRight: 1, color: '#555' }} />
+
       <TextField
         fullWidth
         variant="outlined"
@@ -59,25 +53,40 @@ const InputBox: React.FC<InputBoxProps> = ({ onSend, loading }) => {
         disabled={loading}
         ref={textFieldRef}
         sx={{
-          height: 'auto',
-          maxHeight: '8em', // Increase maxHeight to 8 lines
-          overflowY: 'auto', // Enable scroll when content exceeds maxHeight
-          ...scrollbarStyles, // Apply scrollbar styles here
+          maxHeight: '10em', // Allows multiline growth up to 10 lines
+          overflowY: 'auto',
+          '&::-webkit-scrollbar': {
+            width: '6px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: '#bbb',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: '#f0f0f0',
+          },
           '& .MuiOutlinedInput-root': {
             '& fieldset': {
-              border: 'none', // Remove the border of the TextField
+              border: 'none', // Remove fieldset border
             },
           },
         }}
       />
+
       <IconButton
         color="primary"
         onClick={handleSend}
         sx={{
           marginLeft: 1,
-          border: '1px solid #ccc', // Add border around IconButton
-          borderRadius: '50%', // Make it a circular border
-          padding: '10px', // Add some padding to make the button circular
+          border: '1px solid #ccc',
+          borderRadius: '50%',
+          padding: '10px',
+          backgroundColor: '#fff',
+          transition: '0.2s ease-in-out',
+          '&:hover': {
+            backgroundColor: '#e0f7fa',
+            transform: 'scale(1.1)',
+          },
         }}
         disabled={loading}
       >

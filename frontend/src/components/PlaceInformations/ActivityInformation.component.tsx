@@ -356,7 +356,10 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
                 maxHeight: "150px",
                 overflowY: "auto",
                 marginBottom: "10px",
-                paddingRight: "10px",
+                padding: "10px",
+                borderRadius: "8px",
+                backgroundColor: "#fafafa",
+                boxShadow: "inset 0px 2px 5px rgba(0,0,0,0.1)",
               }}
             >
               <Typography variant="body1">{data.description}</Typography>
@@ -615,6 +618,19 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
           color="primary"
           variant="contained"
           startIcon={<AddShoppingCartIcon />}
+          sx={{
+            background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+            boxShadow: "0 3px 5px 2px rgba(33, 203, 243, .3)",
+            fontWeight: "bold",
+            borderRadius: "8px",
+            textTransform: "none",
+            padding: "8px 16px",
+            transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+            "&:hover": {
+              transform: "scale(1.05)",
+              boxShadow: "0 5px 8px 3px rgba(33, 203, 243, .3)",
+            },
+          }}
         >
           Save
         </Button>
@@ -624,6 +640,19 @@ const ActivityInformation: React.FC<ActivityInformationProps> = ({
             color="error"
             variant="contained"
             startIcon={<DeleteIcon />}
+            sx={{
+              background: "linear-gradient(45deg, #ff5252 30%, #ff1744 90%)",
+              boxShadow: "0 3px 5px 2px rgba(255, 82, 82, .3)",
+              fontWeight: "bold",
+              borderRadius: "8px",
+              textTransform: "none",
+              padding: "8px 16px",
+              transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+              "&:hover": {
+                transform: "scale(1.05)",
+                boxShadow: "0 5px 8px 3px rgba(255, 82, 82, .3)",
+              },
+            }}
           >
             Remove
           </Button>

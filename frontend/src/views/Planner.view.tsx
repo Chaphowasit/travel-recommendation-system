@@ -4,7 +4,14 @@ import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import Typography from "@mui/material/Typography";
-import { FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, useMediaQuery } from "@mui/material";
+import {
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  SelectChangeEvent,
+  useMediaQuery,
+} from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -12,35 +19,52 @@ import ChatSection from "../components/Chat/ChatSection.component";
 import ShoppingCart from "../components/ShoppingCart/ShoppingCart.component";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AccommodationShoppingCartItem, ActivityShoppingCartItem } from "../utils/DataType/shoppingCart";
+import {
+  AccommodationShoppingCartItem,
+  ActivityShoppingCartItem,
+} from "../utils/DataType/shoppingCart";
 import { dayjsStartDate, generateDateRange } from "../utils/time";
 import { CALL_ACCOMMODATION, CALL_ACTIVITY, GENERATE_ROUTE, Message } from "../utils/DataType/message";
 
 interface PlannerViewProps {
-  isSelectedDates: boolean,
+  isSelectedDates: boolean;
   selectedDates: { startDate: Date; endDate: Date };
   setSelectedDates: (startDate: Date, endDate: Date) => void;
 }
 
-const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDates, setSelectedDates }) => {
+const PlannerView: React.FC<PlannerViewProps> = ({
+  isSelectedDates,
+  selectedDates,
+  setSelectedDates,
+}) => {
   const navigate = useNavigate();
 
   useEffect(() => {
     // If no date is selected, navigate to /preference
     if (!isSelectedDates) {
-      navigate('/preference');
+      navigate("/preference");
     }
   }, [isSelectedDates, navigate]);
 
   const [isChatOpen, setIsChatOpen] = useState<boolean>(true); // Default to showing chat
   const isXs = useMediaQuery("(max-width:600px)");
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([{ sender: 'bot', text: "### 🌴 Welcome to the Phuket Travel Assistant! 🌊  \n\nNeed recommendations for **accommodations** or **activities**? Just ask! 🏝️  \nYou can also plan your trip **efficiently** by selecting your favorite places. 🚗✨  \n\n#### 💡 Try asking:  \n- What are some **beachfront hotels** in Phuket? \n- Recommend **fun activities** to do in Phuket.  \n- **(After selecting places)** Plan me a travel route! 🗺️ " }]);
 
-  const [accommodationShoppingCartItem, setAccommodationShoppingCartItem] = useState<AccommodationShoppingCartItem>({
-    item: { id: "-1", name: "0", description: "0", tag: "0", business_hour: { start: 0, end: 0 }, image: "0" },
-    zones: []
-  });
-  const [activityShoppingCartItem, setActivityShoppingCartItem] = useState<ActivityShoppingCartItem[]>([]);
+  const [accommodationShoppingCartItem, setAccommodationShoppingCartItem] =
+    useState<AccommodationShoppingCartItem>({
+      item: {
+        id: "-1",
+        name: "0",
+        description: "0",
+        tag: "0",
+        business_hour: { start: 0, end: 0 },
+        image: "0",
+      },
+      zones: [],
+    });
+  const [activityShoppingCartItem, setActivityShoppingCartItem] = useState<
+    ActivityShoppingCartItem[]
+  >([]);
 
   const handleDateChange = (key: "startDate" | "endDate", value?: Date) => {
     let newStartDate = selectedDates.startDate;
@@ -50,11 +74,10 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
     const duration =
       Math.round(
         (selectedDates.endDate.getTime() - selectedDates.startDate.getTime()) /
-        (24 * 60 * 60 * 1000)
+          (24 * 60 * 60 * 1000)
       ) + 1;
 
     if (key === "startDate") {
-      // Convert to local timezone, remove time (set to 00:00:00)
       newStartDate = dayjsStartDate(value).toDate();
       newEndDate = dayjsStartDate(newStartDate).add(duration - 1, "day").toDate();
     } else if (key === "endDate") {
@@ -83,8 +106,8 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
 
       // Build the full zones array
       const updatedAccommodationZones = dates.map((date) => {
-        const existingZone = accommodationShoppingCartItem.zones.find(
-          (zone) => dayjsStartDate(zone.date).isSame(dayjsStartDate(date))
+        const existingZone = accommodationShoppingCartItem.zones.find((zone) =>
+          dayjsStartDate(zone.date).isSame(dayjsStartDate(date))
         );
 
         if (existingZone) {
@@ -100,7 +123,6 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
         };
       });
 
-      // Ensure type correctness
       const updatedAccommodationCart: AccommodationShoppingCartItem = {
         ...accommodationShoppingCartItem,
         zones: updatedAccommodationZones,
@@ -110,36 +132,31 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
     }
   };
 
-
-  const [duration, setDuration] = useState<number>((selectedDates.endDate.getTime() - selectedDates.startDate.getTime()) / (24 * 60 * 60 * 1000) + 1);
-
+  const [duration, setDuration] = useState<number>(
+    (selectedDates.endDate.getTime() - selectedDates.startDate.getTime()) /
+      (24 * 60 * 60 * 1000) +
+      1
+  );
 
   const handleDurationChange = (event: SelectChangeEvent<number>) => {
     const newDuration = parseInt(event.target.value as string, 10);
 
     if (newDuration < 1 || newDuration > 5) return; // Ensure valid duration range (1-5)
 
-    // Update the state for duration
     setDuration(newDuration);
 
-    // Ensure endDate is at the end of the last selected day
     const newEndDate = dayjsStartDate(selectedDates.startDate)
       .add(newDuration - 1, "day")
       .toDate();
 
-    // Update selected dates while keeping startDate unchanged
     setSelectedDates(selectedDates.startDate, newEndDate);
 
-    // Correct cart filtering: Ensure it does not remove items from the last valid day
     const updatedActivityCart: ActivityShoppingCartItem[] = activityShoppingCartItem
       .map((cartItem) => ({
         ...cartItem,
         zones: cartItem.zones.filter((zone) => {
           const zoneDate = new Date(zone.date);
-          return (
-            zoneDate >= selectedDates.startDate &&
-            zoneDate <= newEndDate
-          );
+          return zoneDate >= selectedDates.startDate && zoneDate <= newEndDate;
         }),
       }))
       .filter((cartItem) => cartItem.zones.length > 0);
@@ -147,13 +164,11 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
     setActivityShoppingCartItem(updatedActivityCart);
 
     if (accommodationShoppingCartItem) {
-      // Generate the complete date range
       const dates = generateDateRange(selectedDates.startDate, newEndDate);
 
-      // Build the full zones array
       const updatedAccommodationZones = dates.map((date) => {
-        const existingZone = accommodationShoppingCartItem.zones.find(
-          (zone) => dayjsStartDate(zone.date).isSame(dayjsStartDate(date))
+        const existingZone = accommodationShoppingCartItem.zones.find((zone) =>
+          dayjsStartDate(zone.date).isSame(dayjsStartDate(date))
         );
 
         if (existingZone) {
@@ -169,7 +184,6 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
         };
       });
 
-      // Ensure type correctness
       const updatedAccommodationCart: AccommodationShoppingCartItem = {
         ...accommodationShoppingCartItem,
         zones: updatedAccommodationZones,
@@ -179,9 +193,9 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
     }
   };
 
-
-  const [requestCallValue, setRequestCallValue] = useState<CALL_ACCOMMODATION | CALL_ACTIVITY | GENERATE_ROUTE | null>(null)
-
+  const [requestCallValue, setRequestCallValue] = useState<
+    CALL_ACCOMMODATION | CALL_ACTIVITY | GENERATE_ROUTE | null
+  >(null);
 
   React.useEffect(() => {
     if (!isXs) {
@@ -191,7 +205,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Grid container sx={{ width: "100%", height: "100vh" }}>
+      <Grid container sx={{ width: "100%", height: "100vh", backgroundColor: "#f0f0f0" }}>
         {/* Chat Section */}
         {((isXs && isChatOpen) || !isXs) && (
           <Grid
@@ -201,7 +215,8 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
               md: 9,
             }}
             sx={{
-              backgroundColor: "#f9f9f9",
+              backgroundColor: "#fafafa",
+              borderRight: "1px solid #ddd",
             }}
             height="100%"
           >
@@ -225,12 +240,14 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "10px",
-                  backgroundColor: "#f0f0f0",
-                  height: "auto", // Allow dynamic height for responsive layout
-                  boxSizing: "border-box",
-                  flexWrap: "wrap", // Wrap content on smaller screens
-                  gap: isXs ? "8px" : "16px", // Adjust gap for smaller screens
+                  padding: 2,
+                  background: "linear-gradient(45deg, #67c1f5, #67c1f5, #67c1f5, #4a90e2);",
+                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                  flexWrap: "wrap",
+                  gap: isXs ? "8px" : "16px",
+                  color: "white",
+                  borderRadius: "16px",
+                  margin: 1
                 }}
               >
                 <Box
@@ -238,27 +255,27 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
                     display: "flex",
                     gap: "16px",
                     alignItems: "center",
-                    flexDirection: isXs ? "column" : "row", // Stack on smaller screens
+                    flexDirection: isXs ? "column" : "row",
                     flexGrow: 1,
-                    width: "100%", // Ensure it takes full width on smaller screens
+                    width: "100%",
+                    color: "white"
                   }}
                 >
                   {/* Start Date Picker */}
                   <DatePicker
                     label="Start Date"
                     value={dayjsStartDate(selectedDates.startDate)}
-                    onChange={(newValue) => handleDateChange("startDate", newValue?.toDate())}
-                    minDate={dayjsStartDate()} // Restricts selection to today and future dates
+                    onChange={(newValue) =>
+                      handleDateChange("startDate", newValue?.toDate())
+                    }
+                    minDate={dayjsStartDate()}
                     sx={{
                       width: isXs ? "100%" : "auto",
                       "& .MuiInputBase-root": {
-                        height: "40px", // Ensures consistent height with the dropdown
+                        height: "40px",
                       },
                     }}
                   />
-
-
-
                   {/* Duration Dropdown */}
                   <FormControl
                     sx={{
@@ -280,38 +297,42 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
                         </MenuItem>
                       ))}
                     </Select>
-
                   </FormControl>
                 </Box>
               </Box>
-
               <Box
                 sx={{
-                  flex: 1, // Ensures the ChatSection takes the remaining available space
-                  overflow: "hidden", // Prevent content from overflowing the parent
+                  flex: 1,
+                  overflowY: "auto",
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "#ccc #f0f0f0",
+                  "&::-webkit-scrollbar": {
+                    width: "6px",
+                  },
+                  "&::-webkit-scrollbar-thumb": {
+                    backgroundColor: "#ccc",
+                    borderRadius: "4px",
+                  },
+                  "&::-webkit-scrollbar-track": {
+                    backgroundColor: "#f0f0f0",
+                  },
                 }}
               >
-                <Box
-                  sx={{
-                    height: "100%",
-                    overflowY: "auto", // Enable scrolling inside the chat section when content overflows
+                <ChatSection
+                  messages={messages}
+                  setMessages={setMessages}
+                  selectedDates={selectedDates}
+                  activityShoppingCartItem={activityShoppingCartItem}
+                  setActivityShoppingCartItem={setActivityShoppingCartItem}
+                  accommodationShoppingCartItem={accommodationShoppingCartItem}
+                  setAccommodationShoppingCartItem={setAccommodationShoppingCartItem}
+                  requestCallValue={requestCallValue}
+                  clearRequestCallValue={() => {
+                    setRequestCallValue(null);
                   }}
-                >
-                  <ChatSection
-                    messages={messages}
-                    setMessages={setMessages}
-                    selectedDates={selectedDates}
-                    activityShoppingCartItem={activityShoppingCartItem}
-                    setActivityShoppingCartItem={setActivityShoppingCartItem}
-                    accommodationShoppingCartItem={accommodationShoppingCartItem}
-                    setAccommodationShoppingCartItem={setAccommodationShoppingCartItem}
-                    requestCallValue={requestCallValue}
-                    clearRequestCallValue={() => { setRequestCallValue(null) }}
-                  />
-                </Box>
+                />
               </Box>
             </Box>
-
           </Grid>
         )}
 
@@ -334,19 +355,33 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
                   alignItems: "center",
                   padding: "10px",
                   borderBottom: "1px solid #ddd",
+                  backgroundColor: "#fafafa",
                   flexWrap: "wrap",
                   gap: "8px",
-                  height: "64px", // Match the height of the left grid header
+                  height: "64px",
                 }}
               >
-                <Typography variant="h6" sx={{ marginRight: "auto" }}>
+                <Typography variant="h6" sx={{ marginRight: "auto", color: "#333" }}>
                   Place Notes
                 </Typography>
               </Box>
               <Box
                 sx={{
                   flex: 1,
-                  overflow: "auto",
+                  overflowY: "auto",
+                  backgroundColor: "#fafafa",
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "#ccc #f0f0f0",
+                  "&::-webkit-scrollbar": {
+                    width: "6px",
+                  },
+                  "&::-webkit-scrollbar-thumb": {
+                    backgroundColor: "#ccc",
+                    borderRadius: "4px",
+                  },
+                  "&::-webkit-scrollbar-track": {
+                    backgroundColor: "#f0f0f0",
+                  },
                 }}
               >
                 <ShoppingCart
@@ -355,9 +390,10 @@ const PlannerView: React.FC<PlannerViewProps> = ({ isSelectedDates, selectedDate
                   accommodationShoppingCartItem={accommodationShoppingCartItem}
                   setAccommodationShoppingCartItem={setAccommodationShoppingCartItem}
                   selectedDates={selectedDates}
-                  requestCall={(requestCall) => { setRequestCallValue(requestCall) }}
+                  requestCall={(requestCall) => {
+                    setRequestCallValue(requestCall);
+                  }}
                 />
-
               </Box>
             </Box>
           </Grid>
