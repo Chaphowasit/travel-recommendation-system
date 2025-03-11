@@ -111,5 +111,4 @@ if __name__ == "__main__":
     streaming_chatbot = StreamingChatbot(weaviate_adapter, mariadb_adaptor)
 
     logger.info("Starting Flask application")
-    # app.run(debug=True)
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)

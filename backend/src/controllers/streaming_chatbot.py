@@ -1,17 +1,22 @@
-from typing import List, Dict
-from langgraph.graph import MessagesState, StateGraph, END, START
-from langchain_core.documents import Document
-from langchain_openai import ChatOpenAI
-from dotenv import load_dotenv
+# Standard library imports
 import os
 import uuid
+from dotenv import load_dotenv
+from typing import List, Dict, Annotated, Literal, Sequence
+
+# Third-party imports
+from langchain_openai import ChatOpenAI
+from langchain_core.documents import Document
+from langchain.schema import SystemMessage, HumanMessage
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+
+# Local imports
 from controllers.ventical_n_day.vrp import VRPSolver
 from controllers.interface import fetch_place_detail
-from langchain.schema import SystemMessage, HumanMessage
 from common.utils import read_txt_files
-from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+from langgraph.graph import MessagesState, StateGraph, END, START
 from pydantic import BaseModel, Field
-from typing import Annotated, Literal, Sequence
+
 
 NEXT_STATE_NAME = ""
 
@@ -40,7 +45,17 @@ class StreamingChatbot:
         self.intent_classify_prompt = read_txt_files(
             "/backend/src/common/prompt/intent_classification.txt"
         )
-        pass
+        self.summarize_recommendation_prompt = read_txt_files(
+            "/backend/src/common/prompt/summarize_place.txt"
+        )
+
+        self.etc_travel_answer_prompt = read_txt_files(
+            "/backend/src/common/prompt/etc_travel_answer.txt"
+        )
+
+        self.etc_non_travel_answer_prompt = read_txt_files(
+            "/backend/src/common/prompt/etc_non_travel_answer.txt"
+        )
 
     def classify_intent(self, state: State) -> Literal["retrieve", "generate_route", "etc_travel", "etc_other"]:
         """Classifies user intent and returns a dictionary with the intent category."""
@@ -159,12 +174,12 @@ class StreamingChatbot:
         )
 
         if mode == "summarize":
-            system_prompt = "You are an AI assistant that summarizes information, answers user queries, and generates engaging text efficiently."
+            system_prompt = self.summarize_recommendation_prompt.format(result=content, user_input=user_input)
         else:
             if content == "etc_other":
-                system_prompt = "You are a creative AI assistant skilled in answering user queries"
+                system_prompt = self.etc_non_travel_answer_prompt
             elif content == "etc_travel":
-                system_prompt = "You are a creative AI assistant skilled in answering user queries"
+                system_prompt = self.etc_travel_answer_prompt
             content = user_input
 
         for chunk in chat_model.stream(
