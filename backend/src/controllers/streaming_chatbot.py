@@ -1,25 +1,17 @@
-from typing import List, Dict, Literal
+from typing import List, Dict
 from langgraph.graph import MessagesState, StateGraph, END, START
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
-from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 import os
 import uuid
 from controllers.ventical_n_day.vrp import VRPSolver
 from controllers.interface import fetch_place_detail
-from adapters.Weaviate import Weaviate_Adapter
-from adapters.MariaDB import MariaDB_Adaptor
-from common.mariadb_schema import Base
-from flask_socketio import SocketIO, emit, send
 
 NEXT_STATE_NAME = ""
 
 # Load environment variables
 load_dotenv()
-
-app = Flask(__name__)
-socketio = SocketIO(app)
 
 class State(MessagesState):
     payload: Dict
@@ -27,7 +19,7 @@ class State(MessagesState):
     state_name: str
     result: any
 
-class Chatbot:
+class StreamingChatbot:
     def __init__(self, weaviate_adapter, mariadb_adaptor):
         self.api_key = os.getenv("OPENAI_APIKEY")
         self.llm = ChatOpenAI(api_key=self.api_key, model="gpt-4o", temperature=0, streaming=True, max_tokens=250)
@@ -131,14 +123,8 @@ class Chatbot:
         workflow.add_edge("general", END)
         
         return workflow.compile()
-    
-    def response(self, data):
-        state = State(messages=[{"role": "user", "content": data.get("message", "")}], payload=data.get("payload", {}))
-        for step in self.graph.stream(state, stream_mode="values", config=self.config):
-            result = step["messages"][-1]
-        return result["content"]
 
-    def response_s(self, msg, payload):
+    def response(self, msg, payload):
         global NEXT_STATE_NAME
         NEXT_STATE_NAME = "intent classification"
         state = State(state_name="init", messages=[{"role": "user", "content": msg}], payload=payload)
@@ -149,158 +135,5 @@ class Chatbot:
             yield {"state" : NEXT_STATE_NAME}
             yield {"result" : step}
         
+        yield {"state": "dogshit"}
         yield {"result": lastest_step, "message": lastest_step["messages"][-1]["content"]}
-
-
-@app.route('/page')
-def index():
-    return render_template('index.html')
-
-payload = {
-    "accommodation": {
-        "place_id": "H0491",
-        "sleep_times": [
-            {
-                "start": 0,
-                "end": 32
-            },
-            {
-                "start": 96,
-                "end": 128
-            }
-        ]
-    },
-    "activities": [
-        {
-            "place_id": "A2291",
-            "stay_time": 50,
-            "visit_range": [
-                {
-                    "start": 0,
-                    "end": 96
-                },
-                {
-                    "start": 96,
-                    "end": 192
-                }
-            ],
-            "must": False
-        },
-        {
-            "place_id": "A0736",
-            "stay_time": 32,
-            "visit_range": [
-                {
-                    "start": 40,
-                    "end": 76
-                },
-                {
-                    "start": 136,
-                    "end": 172
-                }
-            ],
-            "must": False
-        },
-        {
-            "place_id": "A0265",
-            "stay_time": 12,
-            "visit_range": [
-                {
-                    "start": 32,
-                    "end": 68
-                },
-                {
-                    "start": 128,
-                    "end": 164
-                }
-            ],
-            "must": False
-        },
-        {
-            "place_id": "A0314",
-            "stay_time": 16,
-            "visit_range": [
-                {
-                    "start": 48,
-                    "end": 88
-                },
-                {
-                    "start": 144,
-                    "end": 184
-                }
-            ],
-            "must": False
-        }
-    ]
-}
-
-# Event to handle the connection
-@socketio.on('connect')
-def handle_connect():
-    print("Client connected")
-
-# Event to handle disconnection
-@socketio.on('disconnect')
-def handle_disconnect():
-    print("Client disconnected")
-    
-@socketio.on('message')
-def handle_message(message):
-    socketio.emit('message', f"User: {message}")
-    response = chatbot.response_s(message, payload)
-    state_name = ""
-    for item in response:
-        response = dict()
-        state = item.get("state", None)
-        if state:
-            state_name = state
-            continue
-        else:
-            graph_result = item.get("result", None)
-            message = item.get("message", None)
-
-            if graph_result:
-                result = graph_result.get("result", None)
-
-            # if state_name:
-            response["state_name"] = state_name
-            # socketio.emit('message', f"bot: Thinking... ({state_name})")
-            # socketio.emit('message', f"                                 ")
-            # socketio.sleep(0.2)
-            if graph_result and result:
-                if state_name == "summarize the place":
-                    response["recommendations"] = result
-                elif state_name == "response route":
-                    response["route"] = result
-                else:
-                    response["result"] = result
-                # socketio.emit('message', f"bot: Thinking... ({state_name})")
-                # socketio.emit('message', f"bot: Here is your result -> {result}")
-            if message:
-                response["message"] = message
-                # socketio.emit('message', f"bot: {message}")
-            socketio.emit("message", str(response))
-        # socketio.emit('message', f"++++++++++++++++++++++++++++++++++++++")   
-        # if state_name == "summarize the place":
-        #     recommendation = result
-        # elif state_name == "response route":
-        #     route = result
-        
-        # response = {"message": message, "state_name": state_name, "recommendations": recommendation, "route": route}
-        # socketio.emit("message", str(response))
-        # socketio.emit('message', f"++++++++++++++++++++++++++++++++++++++")
-    socketio.emit('message', f"=====================================")
-    socketio.sleep(0.2)
-    
-@app.route('/get-message', methods=['POST'])
-def get_message():
-    data = request.json
-    return app.response_class(chatbot.response(data), content_type='text/plain')
-
-if __name__ == '__main__':
-    weaviate_adapter = Weaviate_Adapter()
-    with MariaDB_Adaptor() as mariadb_adaptor:
-        Base.metadata.create_all(mariadb_adaptor.get_engine())
-
-    chatbot = Chatbot(weaviate_adapter, mariadb_adaptor)
-    app.run(debug=True)

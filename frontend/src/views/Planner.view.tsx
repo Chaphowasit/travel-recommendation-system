@@ -205,7 +205,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Grid container sx={{ width: "100%", height: "100vh", backgroundColor: "#fafafa" }}>
+      <Grid container sx={{ width: "100%", height: "100vh", backgroundColor: "#f0f0f0" }}>
         {/* Chat Section */}
         {((isXs && isChatOpen) || !isXs) && (
           <Grid
@@ -240,11 +240,14 @@ const PlannerView: React.FC<PlannerViewProps> = ({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "10px",
-                  backgroundColor: "#f0f0f0",
+                  padding: 2,
+                  background: "linear-gradient(45deg, #67c1f5, #67c1f5, #67c1f5, #4a90e2);",
                   boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
                   flexWrap: "wrap",
                   gap: isXs ? "8px" : "16px",
+                  color: "white",
+                  borderRadius: "16px",
+                  margin: 1
                 }}
               >
                 <Box
@@ -255,6 +258,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({
                     flexDirection: isXs ? "column" : "row",
                     flexGrow: 1,
                     width: "100%",
+                    color: "white"
                   }}
                 >
                   {/* Start Date Picker */}

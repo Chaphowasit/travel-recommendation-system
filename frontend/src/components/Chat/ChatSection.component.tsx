@@ -3,9 +3,22 @@ import CloseIcon from "@mui/icons-material/Close";
 import ChatWindow from "./ChatWindow.component";
 import InputBox from "./InputBox.component";
 import { useState, useCallback, useEffect } from "react";
-import { sendMessage } from "../../utils/api";
-import { AccommodationShoppingCartItem, ActivityShoppingCartItem, OptimizeRouteData, Zone } from "../../utils/DataType/shoppingCart";
-import { CALL_ACCOMMODATION, CALL_ACCOMMODATION_MESSAGE, CALL_ACTIVITY, CALL_ACTIVITY_MESSAGE, GENERATE_ROUTE, GENERATE_ROUTE_MESSAGE, Message } from "../../utils/DataType/message";
+import { io } from "socket.io-client";
+import { 
+  AccommodationShoppingCartItem, 
+  ActivityShoppingCartItem, 
+  OptimizeRouteData, 
+  Zone 
+} from "../../utils/DataType/shoppingCart";
+import { 
+  CALL_ACCOMMODATION, 
+  CALL_ACCOMMODATION_MESSAGE, 
+  CALL_ACTIVITY, 
+  CALL_ACTIVITY_MESSAGE, 
+  GENERATE_ROUTE, 
+  GENERATE_ROUTE_MESSAGE, 
+  Message 
+} from "../../utils/DataType/message";
 import AccommodationInformation from "../PlaceInformations/AccommodationInformation.component";
 import ActivityInformation from "../PlaceInformations/ActivityInformation.component";
 import { Accommodation, Activity, Range } from "../../utils/DataType/place";
@@ -28,25 +41,18 @@ const convertToVrpPayload = (
   accommodationShoppingCartItem: AccommodationShoppingCartItem,
   selectedDates: { startDate: Date; endDate: Date }
 ): OptimizeRouteData => {
-  // Helper function that adjusts zone ranges using the same algorithm
+  // Adjust zone ranges to account for the selected date range.
   const adjustZonesToRanges = (zones: Zone[]): Range[] => {
     if (!zones || zones.length === 0) return [];
 
-    // Generate an array of days (formatted as "YYYY-MM-DD") from selectedDates global variable
     const days = generateDateRange(selectedDates.startDate, selectedDates.endDate);
     const adjustedRanges: Range[] = [];
-
-    // Sort zones by their date for consistent ordering
     const sortedZones = [...zones].sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    // Loop through each day in the generated date range.
     for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
       const dayStr = days[dayIndex];
-      // Filter zones that fall on this day.
-      // Here we assume `zone.date` is a Date object and use Day.js to format it.
       const zonesForDay = sortedZones.filter(zone => dayjsStartDate(zone.date).format("YYYY-MM-DD") === dayStr);
 
-      // For each zone on the day, adjust its range using the day's index as the offset multiplier.
       zonesForDay.forEach(zone => {
         adjustedRanges.push({
           start: zone.range.start + 96 * dayIndex,
@@ -84,7 +90,63 @@ const ChatSection: React.FC<ChatSectionProps> = ({
   clearRequestCallValue
 }) => {
   const [loading, setLoading] = useState<boolean>(false);
+  const [socket, setSocket] = useState<any>(null);
 
+  // Initialize the WebSocket connection when the component mounts.
+  useEffect(() => {
+    const newSocket = io("http://localhost:5000"); // Replace with your backend URL.
+    setSocket(newSocket);
+
+    newSocket.on("connect", () => {
+      console.log("Connected to websocket server");
+    });
+
+    // Listen for messages from the backend.
+    newSocket.on("message", (response: any) => {
+      // Update only the last bot message bubble.
+      console.log(response)
+      setMessages((prevMessages) => {
+        if (prevMessages.length > 0 && prevMessages[prevMessages.length - 1].sender === 'bot') {
+          const updatedMessages = [...prevMessages];
+          updatedMessages[updatedMessages.length - 1] = {
+            ...updatedMessages[updatedMessages.length - 1],
+            text: response.message || updatedMessages[updatedMessages.length - 1].text,
+            accommodations: response.result?.accommodations,
+            activities: response.result?.activities,
+            route: response.result,
+            state: response.state_name
+          };
+          return updatedMessages;
+        }
+        return [
+          ...prevMessages,
+          {
+            sender: 'bot',
+            text: response.message || "",
+            accommodations: response.result?.accommodations,
+            activities: response.result?.activities,
+            route: response.result,
+            state: response.state_name
+          },
+        ];
+      });
+      
+      // Only mark loading as complete if the final state is received.
+      if (response.state_name && response.state_name === "dogshit") {
+        setLoading(false);
+      }
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("Disconnected from websocket server");
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [setMessages]);
+
+  // Handle sending messages based on the provided text and payload.
   const handleSendMessage = (text: string) => {
     switch (text) {
       case GENERATE_ROUTE_MESSAGE:
@@ -96,42 +158,28 @@ const ChatSection: React.FC<ChatSectionProps> = ({
   };
 
   const onSend = useCallback((text: string, note_payload?: Object) => {
-    if (loading) return;
+    if (loading || !socket) return;
 
+    // Append the user message.
     setMessages((prevMessages) => [
       ...prevMessages,
       { sender: 'user', text },
     ]);
 
+    // Append an empty bot message bubble as a placeholder.
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { sender: 'bot', text: "" }
+    ]);
+
+    // Set loading to true until a final response is received.
     setLoading(true);
 
-    sendMessage(text, note_payload)
-      .then((response) => {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            sender: 'bot',
-            text: response.data?.user_message || "Sorry, I didn't get that.",
-            accommodations: response.data?.accommodations,
-            activities: response.data?.activities,
-            route: response.data?.route
-          },
-        ]);
-      })
-      .catch((error) => {
-        console.error('Error sending message:', error);
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: 'bot', text: 'An error occurred. Please try again.' },
-        ]);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    // Emit the message event with an optional payload.
+    socket.emit("message", { text, payload: note_payload });
+  }, [loading, setMessages, socket]);
 
-    return true;
-  }, [loading, setMessages]);
-
+  // Listen for requestCallValue changes and trigger message sending accordingly.
   useEffect(() => {
     if (!requestCallValue) return;
 
@@ -176,8 +224,6 @@ const ChatSection: React.FC<ChatSectionProps> = ({
     setSelectedAccommodation(accommodation);
     handleCloseActivityDialog();
   };
-
-
 
   return (
     <>

@@ -22,7 +22,7 @@ import ActivityInformation from "../PlaceInformations/ActivityInformation.compon
 import AccommodationInformation from "../PlaceInformations/AccommodationInformation.component";
 import { Accommodation, Activity } from "../../utils/DataType/place";
 import { CALL_ACCOMMODATION, CALL_ACTIVITY, GENERATE_ROUTE } from "../../utils/DataType/message";
-import { ActivityShoppingCartItem, AccommodationShoppingCartItem } from "../../utils/DataType/shoppingCart";
+import { ActivityShoppingCartItem, AccommodationShoppingCartItem, validatePayload } from "../../utils/DataType/shoppingCart";
 import { dayjsStartDate, formatTime } from "../../utils/time";
 
 interface FlattenedShoppingCartItem {
@@ -387,8 +387,16 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
           <Button
             variant="contained"
             onClick={() => {
+              // Assume activityShoppingCartItems and accommodationShoppingCartItem are available in this scope
+              const { result, reason } = validatePayload(activityShoppingCartItem, accommodationShoppingCartItem);
+              if (!result) {
+                // You could use your preferred method for displaying error messages (alert, toast, etc.)
+                alert(reason);
+                return;
+              }
               requestCall(GENERATE_ROUTE);
             }}
+            disabled={validatePayload(activityShoppingCartItem, accommodationShoppingCartItem).result === false}
             sx={{
               width: "200px",
               padding: "10px 20px",

@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { dayjsStartDate } from "../utils/time";
 import { Dayjs } from "dayjs";
+import ExploreIcon from '@mui/icons-material/Explore';
 
 interface PreferenceViewProps {
     onDateChange: (startDate: Date, endDate: Date) => void;
@@ -49,89 +50,108 @@ const PreferenceView: React.FC<PreferenceViewProps> = ({ onDateChange, setIsSele
         <LocalizationProvider dateAdapter={AdapterDayjs}>
             <Box
                 sx={{
+                    backgroundImage: 'url(/background.jpg)',
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    width: "100vw",
+                    height: "100vh",
                     display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
                     justifyContent: "center",
-                    width: "100%",
-                    height: "100%",
-                    padding: 2,
-                    backgroundColor: "#fafafa",
+                    alignItems: "center",
                 }}
             >
-                <Typography variant="h3" sx={{ mb: 2, textAlign: "center", color: "#333" }}>
-                    What date do you want to travel?
-                </Typography>
-
                 <Box
                     sx={{
-                        display: "flex",
-                        flexDirection: isSmallScreen ? "column" : "row",
-                        alignItems: "center",
-                        gap: 2,
-                        width: "100%",
-                        maxWidth: 600,
+                        backgroundColor: "rgba(255, 255, 255, 0.85)",
+                        borderRadius: "8px",
+                        padding: 4,
+                        boxShadow: "0 3px 10px rgba(0,0,0,0.2)",
+                        width: "90%",
+                        maxWidth: 900,
                     }}
                 >
-                    {/* Start Date Picker */}
-                    <DatePicker
-                        label="Start Date"
-                        value={startDate}
-                        onChange={(newValue) => handleStartDateChange(newValue)}
-                        minDate={dayjsStartDate()}
+                    <ExploreIcon
                         sx={{
-                            flex: 1,
-                            width: isSmallScreen ? "100%" : "auto",
+                            fontSize: isSmallScreen ? 50 : 80,
+                            color: "#2196F3",
+                            display: "block",
+                            margin: "0 auto",
+                            mb: 2,
                         }}
                     />
+                    <Typography variant="h3" sx={{ mb: 2, textAlign: "center", color: "#333" }}>
+                        What date would you like to travel?
+                    </Typography>
 
-                    {/* Duration Dropdown */}
-                    <FormControl
+                    <Box
                         sx={{
-                            minWidth: 200,
-                            flex: 1,
-                            width: isSmallScreen ? "100%" : "auto",
+                            display: "flex",
+                            flexDirection: isSmallScreen ? "column" : "row",
+                            alignItems: "center",
+                            gap: 2,
+                            width: "100%",
                         }}
                     >
-                        <InputLabel>Duration</InputLabel>
-                        <Select
-                            value={duration}
-                            onChange={handleDurationChange}
+                        {/* Start Date Picker */}
+                        <DatePicker
+                            label="Start Date"
+                            value={startDate}
+                            onChange={(newValue) => handleStartDateChange(newValue)}
+                            minDate={dayjsStartDate()}
                             sx={{
-                                height: 56,
-                                color: "#333",
+                                flex: 1,
+                                width: isSmallScreen ? "100%" : "auto",
+                            }}
+                        />
+
+                        {/* Duration Dropdown */}
+                        <FormControl
+                            sx={{
+                                minWidth: 200,
+                                flex: 1,
+                                width: isSmallScreen ? "100%" : "auto",
                             }}
                         >
-                            {[1, 2, 3, 4, 5].map((dayCount) => (
-                                <MenuItem key={dayCount} value={dayCount}>
-                                    {dayCount} {dayCount === 1 ? "Day" : "Days"}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                            <InputLabel>Duration</InputLabel>
+                            <Select
+                                value={duration}
+                                onChange={handleDurationChange}
+                                sx={{
+                                    height: 56,
+                                    color: "#333",
+                                }}
+                            >
+                                {[1, 2, 3, 4, 5].map((dayCount) => (
+                                    <MenuItem key={dayCount} value={dayCount}>
+                                        {dayCount} {dayCount === 1 ? "Day" : "Days"}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
 
-                    {/* Submit Button */}
-                    <Button
-                        variant="contained"
-                        onClick={handleSubmit}
-                        sx={{
-                            height: 56,
-                            width: isSmallScreen ? "100%" : 130,
-                            background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
-                            boxShadow: "0 3px 5px 2px rgba(33, 203, 243, .3)",
-                            fontWeight: "bold",
-                            borderRadius: "8px",
-                            textTransform: "none",
-                            padding: "8px 16px",
-                            transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-                            "&:hover": {
-                                transform: "scale(1.05)",
-                                boxShadow: "0 5px 8px 3px rgba(33, 203, 243, .3)",
-                            },
-                        }}
-                    >
-                        Submit
-                    </Button>
+                        {/* Submit Button */}
+                        <Button
+                            variant="contained"
+                            onClick={handleSubmit}
+                            sx={{
+                                height: 56,
+                                width: isSmallScreen ? "100%" : 130,
+                                background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+                                boxShadow: "0 3px 5px 2px rgba(33, 203, 243, .3)",
+                                fontWeight: "bold",
+                                borderRadius: "8px",
+                                textTransform: "none",
+                                padding: "8px 16px",
+                                transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                                "&:hover": {
+                                    transform: "scale(1.05)",
+                                    boxShadow: "0 5px 8px 3px rgba(33, 203, 243, .3)",
+                                },
+                            }}
+                        >
+                            Submit
+                        </Button>
+                    </Box>
                 </Box>
             </Box>
         </LocalizationProvider>
