@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import os
 from weaviate.classes.query import Filter
 
-load_dotenv()
+load_dotenv(override=True)
 gpt_key = os.getenv("OPENAI_APIKEY")
 cohere_key = os.getenv("COHERE_KEY")
 url = os.getenv("WEAVIATE_HOST")

@@ -7,6 +7,8 @@ import os
 import uuid
 from controllers.ventical_n_day.vrp import VRPSolver
 from controllers.interface import fetch_place_detail
+from langchain.schema import SystemMessage, HumanMessage
+import os
 
 NEXT_STATE_NAME = ""
 
@@ -16,7 +18,6 @@ load_dotenv()
 class State(MessagesState):
     payload: Dict
     messages: List[Dict]
-    state_name: str
     result: any
 
 class StreamingChatbot:
@@ -58,7 +59,7 @@ class StreamingChatbot:
         elif intent == "etc_travel" or intent == "etc_other":
             NEXT_STATE_NAME = "general answer"
         
-        return {"state_name": "intent classification", "intent": intent, "messages": [{"role": "system", "content": user_message, "intent" : intent}]}
+        return {"intent": intent, "messages": [{"role": "system", "content": user_message, "intent" : intent}]}
 
     def retrieve(self, state: State):
         """Fetch recommended places based on user query."""
@@ -73,8 +74,7 @@ class StreamingChatbot:
             )
             for category, items in data.items() for item in items
         ]
-        # response = "\n".join([doc.page_content for doc in retrieved_docs])
-        response = "Here is your place!!!"
+        response = "\n".join([doc.page_content for doc in retrieved_docs])
         return {"state_name": "retrieve activities and places", "result": data, "messages": [{"role": "system", "content": response}]}
 
     def generate_route(self, state: State):
@@ -84,21 +84,15 @@ class StreamingChatbot:
         payload = state["payload"]
         vrp_solver = VRPSolver(payload)
         vrp_result = vrp_solver.solve()
-        # response = "Here's your optimize traveling route!!!\n\n" + str(vrp_result)
-        return {"state_name": "Generate route", "result": vrp_result, "messages": [{"role": "system", "content": "Here's your optimize traveling route!!!"}]}
+        response = "Here's your optimize traveling route!!!\n\n" + str(vrp_result)
+        return {"state_name": "Generate route", "result": vrp_result, "messages": [{"role": "system", "content": response}]}
 
     def handle_general(self, state: State):
         global NEXT_STATE_NAME
         NEXT_STATE_NAME = "answer general question"
         """Handles general travel and unrelated questions."""
         intent = state["messages"][-1]["intent"]
-        message = state["messages"][-1]["content"]
-        if intent == "etc_travel":
-            response = self.llm.invoke(message)
-            response = response.content
-        else:
-            response = f"That's an interesting! But let's talk about travel!"
-        return {"state_name":"general answer", "messages": [{"role": "system", "content": response}]}
+        return {"state_name":"general answer", "messages": [{"role": "system", "content": intent}]}
 
     def _build_graph(self):
         workflow = StateGraph(State)
@@ -127,13 +121,52 @@ class StreamingChatbot:
     def response(self, msg, payload):
         global NEXT_STATE_NAME
         NEXT_STATE_NAME = "intent classification"
+        mode="general"
+        response = dict()
+        response["state_name"] = "landing"
+        yield response
+
         state = State(state_name="init", messages=[{"role": "user", "content": msg}], payload=payload)
-        yield {"state" : "init"}
+        
         for step in self.graph.stream(state, stream_mode="values", config=self.config):
             lastest_step = step
-            print(f"\n{step}\n")
-            yield {"state" : NEXT_STATE_NAME}
-            yield {"result" : step}
+            response["state_name"] = NEXT_STATE_NAME
+            if NEXT_STATE_NAME == "summarize the place":
+                response["recommendations"] = lastest_step["result"]
+                mode="summarize"
+            elif NEXT_STATE_NAME == "response route":
+                response["route"] = lastest_step["result"]
+                mode="summarize"
+            yield response
+
+        content = lastest_step["messages"][-1]["content"]
+        yield from self.streaming_summarize_chatbot(msg, response, content, mode)
         
-        yield {"state": "dogshit"}
-        yield {"result": lastest_step, "message": lastest_step["messages"][-1]["content"]}
+        yield {"state_name": "dogshit"}
+    
+    def streaming_summarize_chatbot(self, user_input, response, content, mode):
+        response = dict()
+        response["state_name"] = "summarize answer"
+        
+        chat_model = ChatOpenAI(
+            api_key=self.api_key,
+            streaming=True,
+            model_name="gpt-3.5-turbo"
+        )
+
+        if mode == "summarize":
+            system_prompt = "You are an AI assistant that summarizes information, answers user queries, and generates engaging text efficiently."
+        else:
+            if content == "etc_other":
+                system_prompt = "You are a creative AI assistant skilled in answering user queries and generating engaging text."
+            elif content == "etc_travel":
+                system_prompt = "You are a creative AI assistant skilled in answering user queries and generating engaging text."
+
+        for chunk in chat_model.stream(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=str(content))
+            ]
+        ):
+            response["message"] = chunk.content 
+            yield response
