@@ -5,11 +5,13 @@ import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import Typography from "@mui/material/Typography";
 import {
+  Chip,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
   SelectChangeEvent,
+  Tooltip,
   useMediaQuery,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -22,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 import {
   AccommodationShoppingCartItem,
   ActivityShoppingCartItem,
+  validatePayload,
 } from "../utils/DataType/shoppingCart";
 import { dayjsStartDate, generateDateRange } from "../utils/time";
 import { CALL_ACCOMMODATION, CALL_ACTIVITY, GENERATE_ROUTE, Message } from "../utils/DataType/message";
@@ -74,7 +77,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({
     const duration =
       Math.round(
         (selectedDates.endDate.getTime() - selectedDates.startDate.getTime()) /
-          (24 * 60 * 60 * 1000)
+        (24 * 60 * 60 * 1000)
       ) + 1;
 
     if (key === "startDate") {
@@ -87,110 +90,47 @@ const PlannerView: React.FC<PlannerViewProps> = ({
     // Update selected dates
     setSelectedDates(newStartDate, newEndDate);
 
-    // Update activity shopping cart
-    const updatedActivityCart: ActivityShoppingCartItem[] = activityShoppingCartItem
-      .map((cartItem) => ({
-        ...cartItem,
-        zones: cartItem.zones.filter((zone) => {
-          const zoneDate = new Date(zone.date);
-          return zoneDate >= newStartDate && zoneDate <= newEndDate;
-        }),
-      }))
-      .filter((cartItem) => cartItem.zones.length > 0);
+    setAccommodationShoppingCartItem({
+      item: {
+        id: "-1",
+        name: "0",
+        description: "0",
+        tag: "0",
+        business_hour: { start: 0, end: 0 },
+        image: "0",
+      },
+      zones: [],
+    })
 
-    setActivityShoppingCartItem(updatedActivityCart);
+    setActivityShoppingCartItem([]);
 
-    if (accommodationShoppingCartItem) {
-      // Generate the complete date range
-      const dates = generateDateRange(newStartDate, newEndDate);
+    setMessages([{ sender: 'bot', text: "### 🌴 Welcome to the Phuket Travel Assistant! 🌊  \n\nNeed recommendations for **accommodations** or **activities**? Just ask! 🏝️  \nYou can also plan your trip **efficiently** by selecting your favorite places. 🚗✨  \n\n#### 💡 Try asking:  \n- What are some **beachfront hotels** in Phuket? \n- Recommend **fun activities** to do in Phuket.  \n- **(After selecting places)** Plan me a travel route! 🗺️ " }])
 
-      // Build the full zones array
-      const updatedAccommodationZones = dates.map((date) => {
-        const existingZone = accommodationShoppingCartItem.zones.find((zone) =>
-          dayjsStartDate(zone.date).isSame(dayjsStartDate(date))
-        );
-
-        if (existingZone) {
-          return existingZone;
-        }
-
-        return {
-          date: dayjsStartDate(date).toDate(),
-          range: {
-            start: 0,
-            end: 32,
-          },
-        };
-      });
-
-      const updatedAccommodationCart: AccommodationShoppingCartItem = {
-        ...accommodationShoppingCartItem,
-        zones: updatedAccommodationZones,
-      };
-
-      setAccommodationShoppingCartItem(updatedAccommodationCart);
-    }
   };
 
   const [duration, setDuration] = useState<number>(
     (selectedDates.endDate.getTime() - selectedDates.startDate.getTime()) /
-      (24 * 60 * 60 * 1000) +
-      1
+    (24 * 60 * 60 * 1000) +
+    1
   );
 
   const handleDurationChange = (event: SelectChangeEvent<number>) => {
-    const newDuration = parseInt(event.target.value as string, 10);
+    setAccommodationShoppingCartItem({
+      item: {
+        id: "-1",
+        name: "0",
+        description: "0",
+        tag: "0",
+        business_hour: { start: 0, end: 0 },
+        image: "0",
+      },
+      zones: [],
+    })
 
-    if (newDuration < 1 || newDuration > 5) return; // Ensure valid duration range (1-5)
-
-    setDuration(newDuration);
-
-    const newEndDate = dayjsStartDate(selectedDates.startDate)
-      .add(newDuration - 1, "day")
-      .toDate();
-
-    setSelectedDates(selectedDates.startDate, newEndDate);
-
-    const updatedActivityCart: ActivityShoppingCartItem[] = activityShoppingCartItem
-      .map((cartItem) => ({
-        ...cartItem,
-        zones: cartItem.zones.filter((zone) => {
-          const zoneDate = new Date(zone.date);
-          return zoneDate >= selectedDates.startDate && zoneDate <= newEndDate;
-        }),
-      }))
-      .filter((cartItem) => cartItem.zones.length > 0);
-
-    setActivityShoppingCartItem(updatedActivityCart);
-
-    if (accommodationShoppingCartItem) {
-      const dates = generateDateRange(selectedDates.startDate, newEndDate);
-
-      const updatedAccommodationZones = dates.map((date) => {
-        const existingZone = accommodationShoppingCartItem.zones.find((zone) =>
-          dayjsStartDate(zone.date).isSame(dayjsStartDate(date))
-        );
-
-        if (existingZone) {
-          return existingZone;
-        }
-
-        return {
-          date: dayjsStartDate(date).toDate(),
-          range: {
-            start: 0,
-            end: 32,
-          },
-        };
-      });
-
-      const updatedAccommodationCart: AccommodationShoppingCartItem = {
-        ...accommodationShoppingCartItem,
-        zones: updatedAccommodationZones,
-      };
-
-      setAccommodationShoppingCartItem(updatedAccommodationCart);
-    }
+    setActivityShoppingCartItem([]);
+    setDuration(event.target.value as number);
+    setMessages([{ sender: 'bot', text: "### 🌴 Welcome to the Phuket Travel Assistant! 🌊  \n\nNeed recommendations for **accommodations** or **activities**? Just ask! 🏝️  \nYou can also plan your trip **efficiently** by selecting your favorite places. 🚗✨  \n\n#### 💡 Try asking:  \n- What are some **beachfront hotels** in Phuket? \n- Recommend **fun activities** to do in Phuket.  \n- **(After selecting places)** Plan me a travel route! 🗺️ " }]
+    )
   };
 
   const [requestCallValue, setRequestCallValue] = useState<
@@ -202,6 +142,12 @@ const PlannerView: React.FC<PlannerViewProps> = ({
       setIsChatOpen(true);
     }
   }, [isXs]);
+
+  // Call your validation function
+  const validationResult = validatePayload(
+    activityShoppingCartItem,
+    accommodationShoppingCartItem
+  );
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -349,22 +295,28 @@ const PlannerView: React.FC<PlannerViewProps> = ({
             <Box display="flex" flexDirection="column" height="100%">
               {/* Header Section */}
               <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "10px",
-                  borderBottom: "1px solid #ddd",
-                  backgroundColor: "#fafafa",
-                  flexWrap: "wrap",
-                  gap: "8px",
-                  height: "64px",
-                }}
-              >
-                <Typography variant="h6" sx={{ marginRight: "auto", color: "#333" }}>
-                  Place Notes
-                </Typography>
-              </Box>
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "10px",
+        borderBottom: "1px solid #ddd",
+        backgroundColor: "#fafafa",
+        flexWrap: "wrap",
+        gap: "8px",
+        height: "64px",
+      }}
+    >
+      <Typography variant="h6" sx={{ marginRight: "auto", color: "#333" }}>
+        Place Notes
+      </Typography>
+      <Tooltip title={!validationResult.result ? validationResult.reason : ""}>
+        <Chip
+          label={validationResult.result ? "Able to Find Route" : "Unable to Find Route"}
+          color={validationResult.result ? "success" : "error"}
+        />
+      </Tooltip>
+    </Box>
               <Box
                 sx={{
                   flex: 1,

@@ -123,6 +123,12 @@ class DataLoader:
                 raise ValueError()
 
         return result
+    
+    def get_place_name_mapping(self):
+        mapping = {place_id: place["name"] for place_id, place in self.activities.items()}
+        mapping[self.accommodation["id"]] = self.accommodation["name"]
+        return mapping
+
 
     def get_duration_matrix(self):
 

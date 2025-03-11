@@ -74,7 +74,7 @@ class StreamingChatbot:
             )
             for category, items in data.items() for item in items
         ]
-        response = "\n".join([doc.page_content for doc in retrieved_docs])
+        response = "\n\n".join(["place name: " + doc.metadata["name"] + "\ndescriptions:" + doc.page_content for doc in retrieved_docs])
         return {"state_name": "retrieve activities and places", "result": data, "messages": [{"role": "system", "content": response}]}
 
     def generate_route(self, state: State):
@@ -82,9 +82,30 @@ class StreamingChatbot:
         global NEXT_STATE_NAME
         NEXT_STATE_NAME = "response route"
         payload = state["payload"]
-        vrp_solver = VRPSolver(payload)
-        vrp_result = vrp_solver.solve()
-        response = "Here's your optimize traveling route!!!\n\n" + str(vrp_result)
+        
+        vrp_result= None
+        routes = ""
+        if not payload:
+            routes = "Sorry, unable to generate route via some restrictions"
+        else:
+            vrp_solver = VRPSolver(payload)
+            vrp_result = vrp_solver.solve()
+        
+            # for loop in vrp_result then adjust arrival time and departure time from quarter hour unit to 24-hour format
+            import copy
+
+            routes = []
+            for entry in vrp_result["routes"][0]:
+                entry_copy = copy.deepcopy(entry)
+                for key in ["arrival_time", "departure_time"]:
+                    unit = entry_copy[key] % 96
+                    entry_copy[key] = f"{(unit * 15) // 60:02d}:{(unit * 15) % 60:02d}"
+                entry_copy["arrival_day"] = entry["arrival_time"] // 96 + 1
+                entry_copy["departure_day"] = entry["departure_time"] // 96 + 1
+                routes.append(entry_copy)
+
+            
+        response = "Here's your optimize traveling route!!!\n\n" + str(object=routes)
         return {"state_name": "Generate route", "result": vrp_result, "messages": [{"role": "system", "content": response}]}
 
     def handle_general(self, state: State):
@@ -133,10 +154,10 @@ class StreamingChatbot:
             response["state_name"] = NEXT_STATE_NAME
             if NEXT_STATE_NAME == "summarize the place":
                 response["recommendations"] = lastest_step["result"]
-                mode="summarize"
+                mode="summarize_place"
             elif NEXT_STATE_NAME == "response route":
                 response["route"] = lastest_step["result"]
-                mode="summarize"
+                mode="summarize_route"
             yield response
 
         content = lastest_step["messages"][-1]["content"]
@@ -153,21 +174,136 @@ class StreamingChatbot:
             streaming=True,
             model_name="gpt-3.5-turbo"
         )
+        
+        print(content)
 
-        if mode == "summarize":
-            system_prompt = "You are an AI assistant that summarizes information, answers user queries, and generates engaging text efficiently."
-        else:
-            if content == "etc_other":
-                system_prompt = "You are a creative AI assistant skilled in answering user queries"
-            elif content == "etc_travel":
-                system_prompt = "You are a creative AI assistant skilled in answering user queries"
-            content = user_input
+        if mode == "summarize_route":
+            # Use ChatPromptTemplate for the summarize_route mode
+            from langchain.prompts.chat import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
-        for chunk in chat_model.stream(
+            system_message_template = """
+            ## Travel Route Explanation Assistant (Phuket)
+
+            You are an assistant specialized in clearly and engagingly explaining travel routes in Phuket using natural language.
+
+            ### Instructions:
+            Focus **only** on these fields from the provided input data:
+            - **Node**: Location name
+            - **Node Type**: Identify with "H" for hotel 🏨 and "A" for accommodation 🏄.
+            - **Arrival Time**: Time in 24-hour format (e.g., 14:30)
+            - **Departure Time**: Time in 24-hour format (e.g., 15:00)
+            - **Arrival Day**: Day identifier (e.g., Day 1, Day 2)
+            - **Departure Day**: Day identifier (e.g., Day 1, Day 2)
+
+            Based on this data, provide a concise and engaging natural-language explanation of the travel route, using emojis for clarity and adhering strictly to these guidelines:
+
+            - Clearly separate explanations by day using markdown headers (e.g., **Day 1**, **Day 2**).
+            - On **Day 1**, begin your description with the **departure time** of the first location (assume the user starts from their hotel; thus, arrival time at the first node isn't needed).
+            - Explicitly indicate when a stop **spans overnight** (arrival and departure occur on different days).
+            - Clearly state when stops occur **entirely within the same day**.
+            - On the **final day**, if the departure time is identical to the arrival time, treat it as the journey concluding at midnight.
+            - Include appropriate emojis after location names: 🏨 for hotels ("H") and 🏄 for accommodations ("A").
+            - Add P.S. at the end of the explanation: "P.S. All time not specified in the travel plan is free time."
+
+            ---
+
+            ### Example Input:
+
+            ```json
             [
+                {
+                    "Node": "Central Station",
+                    "Node Type": "A",
+                    "Arrival Time": "09:00",
+                    "Departure Time": "09:15",
+                    "Arrival Day": "Day 1",
+                    "Departure Day": "Day 1"
+                },
+                {
+                    "Node": "Mountain Inn",
+                    "Node Type": "H",
+                    "Arrival Time": "23:45",
+                    "Departure Time": "00:10",
+                    "Arrival Day": "Day 1",
+                    "Departure Day": "Day 2"
+                },
+                {
+                    "Node": "Riverside Cafe",
+                    "Node Type": "A",
+                    "Arrival Time": "00:50",
+                    "Departure Time": "00:50",
+                    "Arrival Day": "Day 2",
+                    "Departure Day": "Day 2"
+                }
+            ]
+            ```
+
+            ---
+
+            ### Example Explanation:
+
+            ### 📅 Day 1
+            * Your journey starts with departure from **Central Station**🏄 at **09:15**.
+
+            * Later, you'll arrive at **Mountain Inn**🏨 late at night (**23:45**) and stay overnight.
+
+            ### 📅 Day 2
+            * Shortly after midnight (**00:10**), you'll depart from **Mountain Inn**🏨.
+
+            * Your journey concludes at **Riverside Cafe**🏄 at **00:50**, marking the end of your travels for the day (midnight).
+            
+            **P.S.** All time not specified in the travel plan is free time.
+            
+            **Note:** Do not wrap explanations in code blocks. and If context is "Sorry, unable to generate route via some restrictions" you have to response that currently user's place note is not meet the requirements for generate route.
+            """
+            # # Create the system message and human message templates
+            # system_message = SystemMessagePromptTemplate.from_template(system_message_template)
+            # human_message = HumanMessagePromptTemplate.from_template(template="{content}", additional_kwargs={"name": "content"})
+
+            # # Build the chat prompt template with both messages
+            # chat_prompt = ChatPromptTemplate.from_messages([system_message, human_message])
+            
+            # # Format the prompt using the input data stored in `content`
+            # messages = chat_prompt.invoke({"content": content})
+
+            messages = [
+                    ("system", system_message_template),
+                    ("human", f"My route is: {content}"),
+                ]
+            
+        else:
+            # For other modes, use the existing approach
+            if mode == "summarize_place":
+                system_prompt = """
+                ### AI Assistant Prompt
+                You are a highly intelligent, precise, and engaging AI assistant with exceptional skills in:
+
+                - **Summarization:** Clearly simplifying complex information into concise, easy-to-understand insights.
+                - **Accuracy:** Answering user queries with precision, reliability, and clarity.
+                - **Creativity:** Generating compelling, informative, and customized content aligned closely to user intentions.
+                When providing information about places:
+
+                - Format your responses clearly using organized Markdown. 
+                - Begin with the fixed main heading: ### Accommodation and Activity Recommendation
+                - Use smaller headings (`####`) for each place name, starting each with one of the following emojis: 🦀, 🐯, or 🐸. 
+                - Provide a concise, single-paragraph description for each place.
+                - Strictly exclude all unnecessary details, including ratings, stars, review counts but do not remove any place name 
+                
+                **Note:** Do not wrap explanations in code blocks.
+                """
+            else:
+                if content == "etc_other":
+                    system_prompt = "You are a creative and insightful AI assistant specializing in addressing diverse user inquiries with clarity and precision."
+                elif content == "etc_travel":
+                    system_prompt = "You are an engaging and knowledgeable AI assistant with expertise in providing personalized travel recommendations, tips, and insights."
+
+                content = user_input
+            messages = [
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=str(content))
             ]
-        ):
+
+        # Stream the output from the chat model using the messages prepared above
+        for chunk in chat_model.stream(messages):
             response["message"] = chunk.content 
             yield response

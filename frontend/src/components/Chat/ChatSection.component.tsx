@@ -8,6 +8,7 @@ import {
   AccommodationShoppingCartItem, 
   ActivityShoppingCartItem, 
   OptimizeRouteData, 
+  validatePayload, 
   Zone 
 } from "../../utils/DataType/shoppingCart";
 import { 
@@ -104,7 +105,6 @@ const ChatSection: React.FC<ChatSectionProps> = ({
     // Listen for messages from the backend.
     newSocket.on("message", (response: any) => {
       // Update only the last bot message bubble.
-      console.log(response)
       setMessages((prevMessages) => {
         if (prevMessages.length > 0 && prevMessages[prevMessages.length - 1].sender === 'bot') {
           const updatedMessages = [...prevMessages];
@@ -153,7 +153,8 @@ const ChatSection: React.FC<ChatSectionProps> = ({
         onSend(GENERATE_ROUTE_MESSAGE, convertToVrpPayload(activityShoppingCartItem, accommodationShoppingCartItem, selectedDates));
         break;
       default:
-        onSend(text);
+        let isValidPlace = validatePayload(activityShoppingCartItem, accommodationShoppingCartItem);
+        onSend(text, isValidPlace.result ? convertToVrpPayload(activityShoppingCartItem, accommodationShoppingCartItem, selectedDates) : undefined);
     }
   };
 

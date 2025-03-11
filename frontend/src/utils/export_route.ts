@@ -1,5 +1,4 @@
 import * as XLSX from 'xlsx';
-import { fetchMariaDB } from './api';
 import { RouteData } from './DataType/route';
 import html2canvas from 'html2canvas';
 import ExcelJS from "exceljs";
@@ -21,23 +20,6 @@ export const export_to_excel = async (
     const date = dateRange[dayNum - 1];
     return date ? `${date}\n(Day ${dayNum})` : `Day ${dayNum}`;
   };
-
-  // ---------------------------
-  // 2) Build Place Name Map
-  // ---------------------------
-  const uniquePlaceIds = Array.from(
-    new Set(
-      routeData.routes.flatMap((route: any) =>
-        route.map((node: any) => node.node)
-      )
-    )
-  );
-  const response = await fetchMariaDB(uniquePlaceIds);
-  const places = response.data;
-  const placeNameMap: { [key: string]: string } = {};
-  places.forEach((place: any) => {
-    placeNameMap[place.id] = place.name;
-  });
 
   // ---------------------------
   // 3) Helper: Time Formatting
@@ -130,7 +112,7 @@ export const export_to_excel = async (
   let groupCounter = 0;
   routeData.routes.forEach((route: any) => {
     route.forEach((node: any, idx: number) => {
-      const nodeName = placeNameMap[node.node] || node.node;
+      const nodeName = node.node;
       const arrival = formatTime(node.arrival_time);
       let departure = formatTime(node.departure_time);
   
@@ -293,7 +275,7 @@ export const export_to_excel = async (
   // ---------------------------
   // 7) Build Final Excel Data Array
   // ---------------------------
-  const exportDate = new Date().toISOString().split("T")[0];
+  const exportDate = dayjsStartDate().format("YYYY-MM-DD");
   const headerRows = [
     ["Travel Planning"],
     [`Travel date : ${startDateStr} to ${endDateStr}`],
@@ -303,7 +285,7 @@ export const export_to_excel = async (
   ];
   const tableHeader = [
     "Day",
-    "Node",
+    "Place",
     "Arrival Time",
     "Departure Time",
     "Stay/Sleep Time"
