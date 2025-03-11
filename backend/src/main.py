@@ -239,35 +239,8 @@ def handle_disconnect():
     
 @socketio.on('message')
 def handle_message(message):
-    response = streaming_chatbot.response(message, payload)
-    state_name = ""
-    for item in response:
-        response = dict()
-        state = item.get("state", None)
-        if state:
-            state_name = state
-            continue
-        else:
-            response["state_name"] = state_name
-
-            graph_result = item.get("result", None)
-
-            if graph_result:
-                result = graph_result.get("result", None)
-
-            if graph_result and result:
-                if state_name == "summarize the place":
-                    response["recommendations"] = result
-                elif state_name == "response route":
-                    response["route"] = result
-                else:
-                    response["result"] = result
-
-            message = item.get("message", None)
-            if message:
-                response["message"] = message
-
-            socketio.emit("message", response)
+    for response in streaming_chatbot.response(message, payload):
+        socketio.emit("message", str(response))
 
 if __name__ == "__main__":
     # Initialize dependencies
