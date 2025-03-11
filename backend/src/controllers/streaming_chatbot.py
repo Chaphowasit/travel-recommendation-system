@@ -9,6 +9,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.documents import Document
 from langchain.schema import SystemMessage, HumanMessage
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
 # Local imports
 from controllers.ventical_n_day.vrp import VRPSolver
@@ -41,22 +42,48 @@ class StreamingChatbot:
         self.weaviate_adapter = weaviate_adapter
         self.mariadb_adaptor = mariadb_adaptor
 
-    def _init_prompt(self):
+    def _init_prompt_and_chain(self):
+        parser = StrOutputParser()
+
         self.intent_classify_prompt = read_txt_files(
-            "/backend/src/common/prompt/intent_classification.txt"
+            "src/common/prompt/intent_classification.txt"
         )
         self.summarize_recommendation_prompt = read_txt_files(
-            "/backend/src/common/prompt/summarize_place.txt"
+            "src/common/prompt/summarize_place.txt"
         )
 
         self.etc_travel_answer_prompt = read_txt_files(
-            "/backend/src/common/prompt/etc_travel_answer.txt"
+            "src/common/prompt/etc_travel_answer.txt"
         )
 
         self.etc_non_travel_answer_prompt = read_txt_files(
-            "/backend/src/common/prompt/etc_non_travel_answer.txt"
+            "src/common/prompt/etc_non_travel_answer.txt"
         )
 
+        # summarize only description
+        summarize_description_prompt = read_txt_files(
+            "src/common/prompt/summarize_description.txt"
+        )
+        self.summarize_description_prompt_template = PromptTemplate.from_template(
+            summarize_description_prompt
+        )
+
+        # summarize only description
+        ner_prompt = read_txt_files("src/common/prompt/ner.txt")
+        ner_prompt_template = ChatPromptTemplate.from_messages(
+            [("system", ner_prompt), ("user", "{text}")]
+        )
+        self.chain_ner = ner_prompt_template | self.llm | parser
+    
+    def summarize_description(self, des):
+        result = self.summarize_description_prompt_template.format(des=des)
+        response = self.model.invoke([HumanMessage(content=result)])
+        return response.content
+    
+    def name_entity_recognition(self, text):
+        result = self.chain_ner.invoke({"text": text})
+        return result
+    
     def classify_intent(self, state: State) -> Literal["retrieve", "generate_route", "etc_travel", "etc_other"]:
         """Classifies user intent and returns a dictionary with the intent category."""
 
@@ -85,16 +112,16 @@ class StreamingChatbot:
         global NEXT_STATE_NAME
         NEXT_STATE_NAME = "summarize the place"
         query = state["messages"][-1]["content"]
-        _, _, data = fetch_place_detail(query, self.weaviate_adapter, self.mariadb_adaptor)
+        place_data = fetch_place_detail(query, self.weaviate_adapter, self.mariadb_adaptor, self.summarize_description, self.name_entity_recognition)
         retrieved_docs = [
             Document(
                 page_content=item["description"],
                 metadata={"id": item["id"], "name": item["name"], "category": category, "tag": item["tag"]}
             )
-            for category, items in data.items() for item in items
+            for category, items in place_data.items() for item in items
         ]
         response = "\n".join([doc.page_content for doc in retrieved_docs])
-        return {"state_name": "retrieve activities and places", "result": data, "messages": [{"role": "system", "content": response}]}
+        return {"state_name": "retrieve activities and places", "result": place_data, "messages": [{"role": "system", "content": response}]}
 
     def generate_route(self, state: State):
         """Generates an optimized travel route."""

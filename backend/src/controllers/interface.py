@@ -1,14 +1,11 @@
 from adapters.Weaviate import Weaviate_Adapter
 from adapters.MariaDB import MariaDB_Adaptor
 from common.mariadb_schema import Accommodation, Activity
-from controllers.chatbot import Chatbot
 from common.utils import rename_field
-import json
-chatbot = Chatbot()
-
 
 def fetch_place_detail(
-    message: str, weaviate_adapter: Weaviate_Adapter, mariadb_adaptor: MariaDB_Adaptor
+    message: str, weaviate_adapter: Weaviate_Adapter, mariadb_adaptor: MariaDB_Adaptor,
+    summarize_description, NER
 ):
     weaviate_adapter.connect()
     
@@ -99,17 +96,4 @@ def fetch_place_detail(
         "accommodations": accommodations
     }
 
-    with open("place_details.json", "w", encoding="utf-8") as file:
-        json.dump(output_data, file, ensure_ascii=False, indent=4)
-
-    return activities, accommodations, output_data
-
-
-# Summarize descriptions in the response
-def summarize_description(value):
-    return chatbot.summarize_description(value)
-
-
-# Named Entity Recognition (NER) for tagging
-def NER(value):
-    return chatbot.name_entity_recognition(text=value)
+    return output_data
