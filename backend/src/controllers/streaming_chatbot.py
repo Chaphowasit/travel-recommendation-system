@@ -8,7 +8,10 @@ import uuid
 from controllers.ventical_n_day.vrp import VRPSolver
 from controllers.interface import fetch_place_detail
 from langchain.schema import SystemMessage, HumanMessage
-import os
+from common.utils import read_txt_files
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+from pydantic import BaseModel, Field
+from typing import Annotated, Literal, Sequence
 
 NEXT_STATE_NAME = ""
 
@@ -20,6 +23,10 @@ class State(MessagesState):
     messages: List[Dict]
     result: any
 
+class UserIntent(BaseModel):
+    """Determines intent of user query."""
+    multi_classification: str = Field(description='Intent class "retrieve", "generate_route", "etc_travel", and "etc_other"')
+
 class StreamingChatbot:
     def __init__(self, weaviate_adapter, mariadb_adaptor):
         self.api_key = os.getenv("OPENAI_APIKEY")
@@ -29,27 +36,24 @@ class StreamingChatbot:
         self.weaviate_adapter = weaviate_adapter
         self.mariadb_adaptor = mariadb_adaptor
 
-    def classify_intent(self, state: State) -> Dict:
+    def _init_prompt(self):
+        self.intent_classify_prompt = read_txt_files(
+            "/backend/src/common/prompt/intent_classification.txt"
+        )
+        pass
+
+    def classify_intent(self, state: State) -> Literal["retrieve", "generate_route", "etc_travel", "etc_other"]:
         """Classifies user intent and returns a dictionary with the intent category."""
-        
+
         user_message = state["messages"][-1]["content"]
-        prompt = f"""
-        Classify the user message into one of the following categories:
-        - retrieve (for travel recommendations)
-        - generate_route (for travel planning)
-        - etc_travel (for general travel-related questions):
-          For travel-related questions that do not involve personal preferences (e.g., "How do I get a visa for Japan?", "Are there restrictions on liquids in carry-on luggage?", "When is the best time to visit Italy?", "How can I find cheap flights?", "What’s the fastest way to get from the airport to the city center?", "Do I need travel insurance for a trip to Europe?").
-          (ChatGPT must answer the question accurately.)
-        - etc_other (for unrelated questions)
-          (not related to anything): For inputs unrelated to travel or general questions (e.g., "Tell me a joke", "Who is the president of the United States?", "What’s 2+2?", "What’s your favorite movie?").
-          (ChatGPT must answer the question but encourage the user to discuss travel topics in Phuket. For example, "2+2 is 4! By the way, are you planning any upcoming trips?" or "That’s a great movie! Speaking of entertainment, are you interested in travel destinations with vibrant art and culture scenes?").
+        prompt = self.intent_classify_prompt.format(user_message=user_message)
         
         
-        User message: "{user_message}"
-        Respond with only the category name.
-        """
-        response = self.llm.invoke(prompt)
-        intent = response.content.strip().lower()
+        llm_with_tool = self.llm.with_structured_output(UserIntent)
+        chain = prompt | llm_with_tool
+        classification_result = chain.invoke()
+
+        intent = classification_result.multi_classification
 
         global NEXT_STATE_NAME
         if intent == "retrieve":
