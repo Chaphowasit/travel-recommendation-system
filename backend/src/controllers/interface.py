@@ -92,8 +92,8 @@ def fetch_place_detail(
             )
 
     output_data = {
+        "accommodations": accommodations,
         "activities": activities,
-        "accommodations": accommodations
     }
 
     return output_data

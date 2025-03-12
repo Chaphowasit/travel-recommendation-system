@@ -2,7 +2,7 @@
 import os
 import uuid
 from dotenv import load_dotenv
-from typing import List, Dict, Annotated, Literal, Sequence
+from typing import List, Dict, Literal
 
 # Third-party imports
 from langchain_openai import ChatOpenAI
@@ -50,6 +50,9 @@ class StreamingChatbot:
         )
         self.summarize_recommendation_prompt = read_txt_files(
             "src/common/prompt/summarize_place.txt"
+        )
+        self.summarize_route_prompt = read_txt_files(
+            "src/common/prompt/summarize_route.txt"
         )
 
         self.etc_travel_answer_prompt = read_txt_files(
@@ -120,7 +123,7 @@ class StreamingChatbot:
             )
             for category, items in place_data.items() for item in items
         ]
-        response = "\n".join([doc.page_content for doc in retrieved_docs])
+        response = "\n\n".join([doc.metadata["category"] + " name: " + doc.metadata["name"] + "\ndescriptions: " + doc.page_content for doc in retrieved_docs])
         return {"state_name": "retrieve activities and places", "result": place_data, "messages": [{"role": "system", "content": response}]}
 
     def generate_route(self, state: State):
@@ -128,9 +131,30 @@ class StreamingChatbot:
         global NEXT_STATE_NAME
         NEXT_STATE_NAME = "response route"
         payload = state["payload"]
-        vrp_solver = VRPSolver(payload)
-        vrp_result = vrp_solver.solve()
-        response = "Here's your optimize traveling route!!!\n\n" + str(vrp_result)
+        
+        vrp_result= None
+        routes = ""
+        if not payload:
+            routes = "Sorry, unable to generate route via some restrictions"
+        else:
+            vrp_solver = VRPSolver(payload)
+            vrp_result = vrp_solver.solve()
+        
+            # for loop in vrp_result then adjust arrival time and departure time from quarter hour unit to 24-hour format
+            import copy
+
+            routes = []
+            for entry in vrp_result["routes"][0]:
+                entry_copy = copy.deepcopy(entry)
+                for key in ["arrival_time", "departure_time"]:
+                    unit = entry_copy[key] % 96
+                    entry_copy[key] = f"{(unit * 15) // 60:02d}:{(unit * 15) % 60:02d}"
+                entry_copy["arrival_day"] = entry["arrival_time"] // 96 + 1
+                entry_copy["departure_day"] = entry["departure_time"] // 96 + 1
+                routes.append(entry_copy)
+
+            
+        response = "Here's your optimize traveling route!!!\n\n" + str(object=routes)
         return {"state_name": "Generate route", "result": vrp_result, "messages": [{"role": "system", "content": response}]}
 
     def handle_general(self, state: State):
@@ -179,10 +203,10 @@ class StreamingChatbot:
             response["state_name"] = NEXT_STATE_NAME
             if NEXT_STATE_NAME == "summarize the place":
                 response["recommendations"] = lastest_step["result"]
-                mode="summarize"
+                mode="summarize_place"
             elif NEXT_STATE_NAME == "response route":
                 response["route"] = lastest_step["result"]
-                mode="summarize"
+                mode="summarize_route"
             yield response
 
         content = lastest_step["messages"][-1]["content"]
@@ -199,21 +223,38 @@ class StreamingChatbot:
             streaming=True,
             model_name="gpt-3.5-turbo"
         )
+        
+        print(content)
 
-        if mode == "summarize":
-            system_prompt = self.summarize_recommendation_prompt.format(result=content, user_input=user_input)
+        if mode == "summarize_route":
+            # Use ChatPromptTemplate for the summarize_route mode
+
+            system_message_template = self.summarize_route_prompt
+
+            messages = [
+                    ("system", system_message_template),
+                    ("human", f"My route is: {content}"),
+                ]
+            
         else:
-            if content == "etc_other":
-                system_prompt = self.etc_non_travel_answer_prompt
-            elif content == "etc_travel":
-                system_prompt = self.etc_travel_answer_prompt
-            content = user_input
+            # For other modes, use the existing approach
+            if mode == "summarize_place":
+                
+                prompt_template = PromptTemplate.from_template(self.summarize_recommendation_prompt)
+                system_prompt = prompt_template.format(user_input=user_input)
+            else:
+                if content == "etc_other":
+                    system_prompt = self.etc_non_travel_answer_prompt
+                elif content == "etc_travel":
+                    system_prompt = self.etc_travel_answer_prompt
 
-        for chunk in chat_model.stream(
-            [
+                content = user_input
+            messages = [
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=str(content))
             ]
-        ):
+
+        # Stream the output from the chat model using the messages prepared above
+        for chunk in chat_model.stream(messages):
             response["message"] = chunk.content 
             yield response

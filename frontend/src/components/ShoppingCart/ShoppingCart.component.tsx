@@ -372,7 +372,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
         </Grid>
       )}
 
-      {accommodationShoppingCartItem.item.id !== "-1" && activityShoppingCartItem.length > 0 && (
+      {validatePayload(activityShoppingCartItem, accommodationShoppingCartItem).result && (
         <Box
           sx={{
             position: "sticky",

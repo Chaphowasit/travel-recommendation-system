@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from typing import Dict
 from ortools.constraint_solver import routing_enums_pb2, pywrapcp
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -32,7 +33,8 @@ class VRPSolver:
         data["time_matrix"] = duration_matrix
         data["time_services"] = self.data_loader.get_durations(place_ids)
         data["musts"] = self.data_loader.get_musts(place_ids)
-        
+        data["places"] = self.data_loader.get_place_name_mapping()
+
         print(data)
         
         return data
@@ -72,12 +74,13 @@ class VRPSolver:
                 previous_departure_time = departure_time
 
                 node_info = {
-                    "node": node,
+                    "node": self.data["places"][node],
                     "index": index,
                     "arrival_time": arrival_time,
                     "departure_time": departure_time,
                     "waiting_time": waiting_time,
                     "travel_time": travel_time,
+                    "node_type": node[0]
                 }
                 route.append(node_info)
                 index = self.solution.Value(self.routing.NextVar(index))
@@ -90,12 +93,13 @@ class VRPSolver:
             waiting_time = max(0, arrival_time - (previous_departure_time + travel_time)) if route else 0
 
             node_info = {
-                "node": node,
+                "node": self.data["places"][node],
                 "index": index,
                 "arrival_time": arrival_time,
                 "departure_time": arrival_time,
                 "waiting_time": waiting_time,
                 "travel_time": travel_time,
+                "node_type": node[0]
             }
             route.append(node_info)
             total_time += arrival_time
