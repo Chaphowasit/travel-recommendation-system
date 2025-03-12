@@ -30,8 +30,7 @@ class State(MessagesState):
     result: any
 
 class UserIntent(BaseModel):
-    """Determines intent of user query."""
-    multi_classification: str = Field(description='Intent class "retrieve", "generate_route", "etc_travel", and "etc_other"')
+    intent: str = Field(description='Intent class "Recommended", "Generate Route", "Etc (QA related to travel planner)", and "Etc (not related to anything)"')
 
 class StreamingChatbot:
     def __init__(self, weaviate_adapter, mariadb_adaptor):
@@ -41,6 +40,7 @@ class StreamingChatbot:
         self.config = {"configurable": {"thread_id": str(uuid.uuid4())}}
         self.weaviate_adapter = weaviate_adapter
         self.mariadb_adaptor = mariadb_adaptor
+        self._init_prompt_and_chain()
 
     def _init_prompt_and_chain(self):
         parser = StrOutputParser()
@@ -86,25 +86,25 @@ class StreamingChatbot:
     
     def classify_intent(self, state: State) -> Literal["retrieve", "generate_route", "etc_travel", "etc_other"]:
         """Classifies user intent and returns a dictionary with the intent category."""
-
         user_message = state["messages"][-1]["content"]
-        prompt = self.intent_classify_prompt.format(user_message=user_message)
-        
-        
-        llm_with_tool = self.llm.with_structured_output(UserIntent)
-        chain = prompt | llm_with_tool
-        classification_result = chain.invoke()
-
-        intent = classification_result.multi_classification
+        prompt_template = PromptTemplate.from_template(self.intent_classify_prompt)
+        formatted_prompt = prompt_template.format(user_message=user_message)
+        classification_result = self.llm.invoke(formatted_prompt)
+        intent = classification_result.content.strip()
 
         global NEXT_STATE_NAME
-        if intent == "retrieve":
+        if intent == "Recommended":
+            intent = "retrieve"
             NEXT_STATE_NAME = "retrieve activities and places"
-        elif intent == "generate_route":
+        elif intent == "Generate Route":
+            intent = "generate_route"
             NEXT_STATE_NAME = "generate route"
-        elif intent == "etc_travel" or intent == "etc_other":
+        elif intent == "Etc (not related to anything)":
+            intent = "etc_other"
             NEXT_STATE_NAME = "general answer"
-        
+        elif intent == "Etc (QA related to travel planner)":
+            intent = "etc_travel"
+            NEXT_STATE_NAME = "general answer"
         return {"intent": intent, "messages": [{"role": "system", "content": user_message, "intent" : intent}]}
 
     def retrieve(self, state: State):
@@ -172,7 +172,7 @@ class StreamingChatbot:
         response["state_name"] = "landing"
         yield response
 
-        state = State(state_name="init", messages=[{"role": "user", "content": msg}], payload=payload)
+        state = State(messages=[{"role": "user", "content": msg}], payload=payload)
         
         for step in self.graph.stream(state, stream_mode="values", config=self.config):
             lastest_step = step
