@@ -1,1 +1,0 @@
-Summarize the following {result} to explain why we recommended it in response to the user asking '{user_input}'. Remember that exclude the image url in summarizing (do not render image at all)

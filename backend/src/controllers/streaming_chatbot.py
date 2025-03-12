@@ -1,15 +1,23 @@
-from typing import List, Dict
-from langgraph.graph import MessagesState, StateGraph, END, START
-from langchain_core.documents import Document
-from langchain_openai import ChatOpenAI
-from dotenv import load_dotenv
+# Standard library imports
 import os
-from langgraph.checkpoint.memory import MemorySaver
 import uuid
+from dotenv import load_dotenv
+from typing import List, Dict, Literal
+
+# Third-party imports
+from langchain_openai import ChatOpenAI
+from langchain_core.documents import Document
+from langchain.schema import SystemMessage, HumanMessage
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+# Local imports
 from controllers.ventical_n_day.vrp import VRPSolver
 from controllers.interface import fetch_place_detail
-from langchain.schema import SystemMessage, HumanMessage
-import os
+from common.utils import read_txt_files
+from langgraph.graph import MessagesState, StateGraph, END, START
+from pydantic import BaseModel, Field
+
 
 NEXT_STATE_NAME = ""
 
@@ -21,6 +29,9 @@ class State(MessagesState):
     messages: List[Dict]
     result: any
 
+class UserIntent(BaseModel):
+    intent: str = Field(description='Intent class "Recommended", "Generate Route", "Etc (QA related to travel planner)", and "Etc (not related to anything)"')
+
 class StreamingChatbot:
     def __init__(self, weaviate_adapter, mariadb_adaptor):
         self.api_key = os.getenv("OPENAI_APIKEY")
@@ -29,37 +40,74 @@ class StreamingChatbot:
         self.config = {"configurable": {"thread_id": str(uuid.uuid4())}}
         self.weaviate_adapter = weaviate_adapter
         self.mariadb_adaptor = mariadb_adaptor
+        self._init_prompt_and_chain()
 
-    def classify_intent(self, state: State) -> Dict:
+    def _init_prompt_and_chain(self):
+        parser = StrOutputParser()
+
+        self.intent_classify_prompt = read_txt_files(
+            "src/common/prompt/intent_classification.txt"
+        )
+        self.summarize_recommendation_prompt = read_txt_files(
+            "src/common/prompt/summarize_place.txt"
+        )
+        self.summarize_route_prompt = read_txt_files(
+            "src/common/prompt/summarize_route.txt"
+        )
+
+        self.etc_travel_answer_prompt = read_txt_files(
+            "src/common/prompt/etc_travel_answer.txt"
+        )
+
+        self.etc_non_travel_answer_prompt = read_txt_files(
+            "src/common/prompt/etc_non_travel_answer.txt"
+        )
+
+        # summarize only description
+        summarize_description_prompt = read_txt_files(
+            "src/common/prompt/summarize_description.txt"
+        )
+        self.summarize_description_prompt_template = PromptTemplate.from_template(
+            summarize_description_prompt
+        )
+
+        # summarize only description
+        ner_prompt = read_txt_files("src/common/prompt/ner.txt")
+        ner_prompt_template = ChatPromptTemplate.from_messages(
+            [("system", ner_prompt), ("user", "{text}")]
+        )
+        self.chain_ner = ner_prompt_template | self.llm | parser
+    
+    def summarize_description(self, des):
+        result = self.summarize_description_prompt_template.format(des=des)
+        response = self.model.invoke([HumanMessage(content=result)])
+        return response.content
+    
+    def name_entity_recognition(self, text):
+        result = self.chain_ner.invoke({"text": text})
+        return result
+    
+    def classify_intent(self, state: State) -> Literal["retrieve", "generate_route", "etc_travel", "etc_other"]:
         """Classifies user intent and returns a dictionary with the intent category."""
-        
         user_message = state["messages"][-1]["content"]
-        prompt = f"""
-        Classify the user message into one of the following categories:
-        - retrieve (for travel recommendations)
-        - generate_route (for travel planning)
-        - etc_travel (for general travel-related questions):
-          For travel-related questions that do not involve personal preferences (e.g., "How do I get a visa for Japan?", "Are there restrictions on liquids in carry-on luggage?", "When is the best time to visit Italy?", "How can I find cheap flights?", "What’s the fastest way to get from the airport to the city center?", "Do I need travel insurance for a trip to Europe?").
-          (ChatGPT must answer the question accurately.)
-        - etc_other (for unrelated questions)
-          (not related to anything): For inputs unrelated to travel or general questions (e.g., "Tell me a joke", "Who is the president of the United States?", "What’s 2+2?", "What’s your favorite movie?").
-          (ChatGPT must answer the question but encourage the user to discuss travel topics in Phuket. For example, "2+2 is 4! By the way, are you planning any upcoming trips?" or "That’s a great movie! Speaking of entertainment, are you interested in travel destinations with vibrant art and culture scenes?").
-        
-        
-        User message: "{user_message}"
-        Respond with only the category name.
-        """
-        response = self.llm.invoke(prompt)
-        intent = response.content.strip().lower()
+        prompt_template = PromptTemplate.from_template(self.intent_classify_prompt)
+        formatted_prompt = prompt_template.format(user_message=user_message)
+        classification_result = self.llm.invoke(formatted_prompt)
+        intent = classification_result.content.strip()
 
         global NEXT_STATE_NAME
-        if intent == "retrieve":
+        if intent == "Recommended":
+            intent = "retrieve"
             NEXT_STATE_NAME = "retrieve activities and places"
-        elif intent == "generate_route":
+        elif intent == "Generate Route":
+            intent = "generate_route"
             NEXT_STATE_NAME = "generate route"
-        elif intent == "etc_travel" or intent == "etc_other":
+        elif intent == "Etc (not related to anything)":
+            intent = "etc_other"
             NEXT_STATE_NAME = "general answer"
-        
+        elif intent == "Etc (QA related to travel planner)":
+            intent = "etc_travel"
+            NEXT_STATE_NAME = "general answer"
         return {"intent": intent, "messages": [{"role": "system", "content": user_message, "intent" : intent}]}
 
     def retrieve(self, state: State):
@@ -67,16 +115,16 @@ class StreamingChatbot:
         global NEXT_STATE_NAME
         NEXT_STATE_NAME = "summarize the place"
         query = state["messages"][-1]["content"]
-        _, _, data = fetch_place_detail(query, self.weaviate_adapter, self.mariadb_adaptor)
+        place_data = fetch_place_detail(query, self.weaviate_adapter, self.mariadb_adaptor, self.summarize_description, self.name_entity_recognition)
         retrieved_docs = [
             Document(
                 page_content=item["description"],
                 metadata={"id": item["id"], "name": item["name"], "category": category, "tag": item["tag"]}
             )
-            for category, items in data.items() for item in items
+            for category, items in place_data.items() for item in items
         ]
         response = "\n\n".join([doc.metadata["category"] + " name: " + doc.metadata["name"] + "\ndescriptions: " + doc.page_content for doc in retrieved_docs])
-        return {"state_name": "retrieve activities and places", "result": data, "messages": [{"role": "system", "content": response}]}
+        return {"state_name": "retrieve activities and places", "result": place_data, "messages": [{"role": "system", "content": response}]}
 
     def generate_route(self, state: State):
         """Generates an optimized travel route."""
@@ -148,7 +196,7 @@ class StreamingChatbot:
         response["state_name"] = "landing"
         yield response
 
-        state = State(state_name="init", messages=[{"role": "user", "content": msg}], payload=payload)
+        state = State(messages=[{"role": "user", "content": msg}], payload=payload)
         
         for step in self.graph.stream(state, stream_mode="values", config=self.config):
             lastest_step = step
@@ -180,92 +228,8 @@ class StreamingChatbot:
 
         if mode == "summarize_route":
             # Use ChatPromptTemplate for the summarize_route mode
-            from langchain.prompts.chat import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
-            system_message_template = """
-            ## Travel Route Explanation Assistant (Phuket)
-
-            You are an assistant specialized in clearly and engagingly explaining travel routes in Phuket using natural language.
-
-            ### Instructions:
-            Focus **only** on these fields from the provided input data:
-            - **Node**: Location name
-            - **Node Type**: Identify with "H" for hotel 🏨 and "A" for accommodation 🏄.
-            - **Arrival Time**: Time in 24-hour format (e.g., 14:30)
-            - **Departure Time**: Time in 24-hour format (e.g., 15:00)
-            - **Arrival Day**: Day identifier (e.g., Day 1, Day 2)
-            - **Departure Day**: Day identifier (e.g., Day 1, Day 2)
-
-            Based on this data, provide a concise and engaging natural-language explanation of the travel route, using emojis for clarity and adhering strictly to these guidelines:
-
-            - Clearly separate explanations by day using markdown headers (e.g., **Day 1**, **Day 2**).
-            - On **Day 1**, begin your description with the **departure time** of the first location (assume the user starts from their hotel; thus, arrival time at the first node isn't needed).
-            - Explicitly indicate when a stop **spans overnight** (arrival and departure occur on different days).
-            - Clearly state when stops occur **entirely within the same day**.
-            - On the **final day**, if the departure time is identical to the arrival time, treat it as the journey concluding at midnight.
-            - Include appropriate emojis after location names: 🏨 for hotels ("H") and 🏄 for accommodations ("A").
-            - Add P.S. at the end of the explanation: "P.S. All time not specified in the travel plan is free time."
-
-            ---
-
-            ### Example Input:
-
-            ```json
-            [
-                {
-                    "Node": "Central Station",
-                    "Node Type": "A",
-                    "Arrival Time": "09:00",
-                    "Departure Time": "09:15",
-                    "Arrival Day": "Day 1",
-                    "Departure Day": "Day 1"
-                },
-                {
-                    "Node": "Mountain Inn",
-                    "Node Type": "H",
-                    "Arrival Time": "23:45",
-                    "Departure Time": "00:10",
-                    "Arrival Day": "Day 1",
-                    "Departure Day": "Day 2"
-                },
-                {
-                    "Node": "Riverside Cafe",
-                    "Node Type": "A",
-                    "Arrival Time": "00:50",
-                    "Departure Time": "00:50",
-                    "Arrival Day": "Day 2",
-                    "Departure Day": "Day 2"
-                }
-            ]
-            ```
-
-            ---
-
-            ### Example Explanation:
-
-            ### 📅 Day 1
-            * Your journey starts with departure from **Central Station**🏄 at **09:15**.
-
-            * Later, you'll arrive at **Mountain Inn**🏨 late at night (**23:45**) and stay overnight.
-
-            ### 📅 Day 2
-            * Shortly after midnight (**00:10**), you'll depart from **Mountain Inn**🏨.
-
-            * Your journey concludes at **Riverside Cafe**🏄 at **00:50**, marking the end of your travels for the day (midnight).
-            
-            **P.S.** All time not specified in the travel plan is free time.
-            
-            **Note:** Do not wrap explanations in code blocks. and If context is "Sorry, unable to generate route via some restrictions" you have to response that currently user's place note is not meet the requirements for generate route.
-            """
-            # # Create the system message and human message templates
-            # system_message = SystemMessagePromptTemplate.from_template(system_message_template)
-            # human_message = HumanMessagePromptTemplate.from_template(template="{content}", additional_kwargs={"name": "content"})
-
-            # # Build the chat prompt template with both messages
-            # chat_prompt = ChatPromptTemplate.from_messages([system_message, human_message])
-            
-            # # Format the prompt using the input data stored in `content`
-            # messages = chat_prompt.invoke({"content": content})
+            system_message_template = self.summarize_route_prompt
 
             messages = [
                     ("system", system_message_template),
@@ -275,31 +239,14 @@ class StreamingChatbot:
         else:
             # For other modes, use the existing approach
             if mode == "summarize_place":
-                system_prompt = f"""
-                You are a highly intelligent, precise, and engaging AI assistant with exceptional skills in:
-                - **Summarization**: Simplifying complex information into concise, easy-to-understand insights.  
-                - **Accuracy**: Providing precise, reliable, and clear answers to user queries.  
-                - **Creativity**: Generating compelling, informative, and customized content aligned with user intentions.
-
-                When sharing information about places:
-                - Format your responses using organized Markdown.
-                - Begin with the main heading: `### Summary of Recommendations`
-                - Provide a single paragraph summarizing the `{user_input}` and clearly explain how our recommendations address it.
-                - Use smaller headings (`####`) for each place type (`#### Accommodation`, `#### Activity`).
-                - Use even smaller headings (`#####`) for each place name, always beginning with one of these emojis: 🦀, 🐯, or 🐸.
-                - Include a concise, single-paragraph description for **each and every place listed by the user**, explicitly ensuring no place is omitted.
-                - Exclude all unnecessary details such as ratings, stars, and review counts, but **do not remove or skip any place** provided in the user's input.
-                - List **all accommodations first**, followed by activities, clearly separating the two sections with a markdown line (`---`).
-
-                Important Note:  
-                - Never wrap explanations in code blocks.  
-                - **Always include every single place provided by the user without exception or omission.**
-                """
+                
+                prompt_template = PromptTemplate.from_template(self.summarize_recommendation_prompt)
+                system_prompt = prompt_template.format(user_input=user_input)
             else:
                 if content == "etc_other":
-                    system_prompt = "You are a creative and insightful AI assistant specializing in addressing diverse user inquiries with clarity and precision."
+                    system_prompt = self.etc_non_travel_answer_prompt
                 elif content == "etc_travel":
-                    system_prompt = "You are an engaging and knowledgeable AI assistant with expertise in providing personalized travel recommendations, tips, and insights."
+                    system_prompt = self.etc_travel_answer_prompt
 
                 content = user_input
             messages = [
