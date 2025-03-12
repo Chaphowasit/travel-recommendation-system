@@ -4,6 +4,7 @@ from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 import os
+from langgraph.checkpoint.memory import MemorySaver
 import uuid
 from controllers.ventical_n_day.vrp import VRPSolver
 from controllers.interface import fetch_place_detail
@@ -74,7 +75,7 @@ class StreamingChatbot:
             )
             for category, items in data.items() for item in items
         ]
-        response = "\n\n".join(["place name: " + doc.metadata["name"] + "\ndescriptions:" + doc.page_content for doc in retrieved_docs])
+        response = "\n\n".join([doc.metadata["category"] + " name: " + doc.metadata["name"] + "\ndescriptions: " + doc.page_content for doc in retrieved_docs])
         return {"state_name": "retrieve activities and places", "result": data, "messages": [{"role": "system", "content": response}]}
 
     def generate_route(self, state: State):
@@ -274,22 +275,25 @@ class StreamingChatbot:
         else:
             # For other modes, use the existing approach
             if mode == "summarize_place":
-                system_prompt = """
-                ### AI Assistant Prompt
+                system_prompt = f"""
                 You are a highly intelligent, precise, and engaging AI assistant with exceptional skills in:
+                - **Summarization**: Simplifying complex information into concise, easy-to-understand insights.  
+                - **Accuracy**: Providing precise, reliable, and clear answers to user queries.  
+                - **Creativity**: Generating compelling, informative, and customized content aligned with user intentions.
 
-                - **Summarization:** Clearly simplifying complex information into concise, easy-to-understand insights.
-                - **Accuracy:** Answering user queries with precision, reliability, and clarity.
-                - **Creativity:** Generating compelling, informative, and customized content aligned closely to user intentions.
-                When providing information about places:
+                When sharing information about places:
+                - Format your responses using organized Markdown.
+                - Begin with the main heading: `### Summary of Recommendations`
+                - Provide a single paragraph summarizing the `{user_input}` and clearly explain how our recommendations address it.
+                - Use smaller headings (`####`) for each place type (`#### Accommodation`, `#### Activity`).
+                - Use even smaller headings (`#####`) for each place name, always beginning with one of these emojis: 🦀, 🐯, or 🐸.
+                - Include a concise, single-paragraph description for **each and every place listed by the user**, explicitly ensuring no place is omitted.
+                - Exclude all unnecessary details such as ratings, stars, and review counts, but **do not remove or skip any place** provided in the user's input.
+                - List **all accommodations first**, followed by activities, clearly separating the two sections with a markdown line (`---`).
 
-                - Format your responses clearly using organized Markdown. 
-                - Begin with the fixed main heading: ### Accommodation and Activity Recommendation
-                - Use smaller headings (`####`) for each place name, starting each with one of the following emojis: 🦀, 🐯, or 🐸. 
-                - Provide a concise, single-paragraph description for each place.
-                - Strictly exclude all unnecessary details, including ratings, stars, review counts but do not remove any place name 
-                
-                **Note:** Do not wrap explanations in code blocks.
+                Important Note:  
+                - Never wrap explanations in code blocks.  
+                - **Always include every single place provided by the user without exception or omission.**
                 """
             else:
                 if content == "etc_other":

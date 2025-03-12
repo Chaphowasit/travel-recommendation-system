@@ -106,9 +106,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setAct
         maxHeight: '100vh',
         overflowY: 'auto',
         padding: 2,
-        background: 'linear-gradient(270deg,rgba(103, 245, 200, 0.3),rgba(103, 193, 245, 0.3));',
-        borderRadius: '16px',
-        margin: 1,
+        background: '#f9f9f9',
         scrollbarWidth: 'thin',
         scrollbarColor: '#ccc #f0f0f0',
         '&::-webkit-scrollbar': {

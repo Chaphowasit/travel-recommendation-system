@@ -115,6 +115,14 @@ const PlannerView: React.FC<PlannerViewProps> = ({
   );
 
   const handleDurationChange = (event: SelectChangeEvent<number>) => {
+    let newStartDate = selectedDates.startDate;
+    let newEndDate = selectedDates.endDate;
+
+    newEndDate = dayjsStartDate(newStartDate).add(event.target.value as number - 1, "day").toDate();
+
+    // Update selected dates
+    setSelectedDates(newStartDate, newEndDate);
+
     setAccommodationShoppingCartItem({
       item: {
         id: "-1",
@@ -129,6 +137,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({
 
     setActivityShoppingCartItem([]);
     setDuration(event.target.value as number);
+
     setMessages([{ sender: 'bot', text: "### 🌴 Welcome to the Phuket Travel Assistant! 🌊  \n\nNeed recommendations for **accommodations** or **activities**? Just ask! 🏝️  \nYou can also plan your trip **efficiently** by selecting your favorite places. 🚗✨  \n\n#### 💡 Try asking:  \n- What are some **beachfront hotels** in Phuket? \n- Recommend **fun activities** to do in Phuket.  \n- **(After selecting places)** Plan me a travel route! 🗺️ " }]
     )
   };
@@ -295,28 +304,28 @@ const PlannerView: React.FC<PlannerViewProps> = ({
             <Box display="flex" flexDirection="column" height="100%">
               {/* Header Section */}
               <Box
-      sx={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "10px",
-        borderBottom: "1px solid #ddd",
-        backgroundColor: "#fafafa",
-        flexWrap: "wrap",
-        gap: "8px",
-        height: "64px",
-      }}
-    >
-      <Typography variant="h6" sx={{ marginRight: "auto", color: "#333" }}>
-        Place Notes
-      </Typography>
-      <Tooltip title={!validationResult.result ? validationResult.reason : ""}>
-        <Chip
-          label={validationResult.result ? "Able to Find Route" : "Unable to Find Route"}
-          color={validationResult.result ? "success" : "error"}
-        />
-      </Tooltip>
-    </Box>
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "10px",
+                  borderBottom: "1px solid #ddd",
+                  backgroundColor: "#fafafa",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                  height: "64px",
+                }}
+              >
+                <Typography variant="h6" sx={{ marginRight: "auto", color: "#333" }}>
+                  Place Notes
+                </Typography>
+                <Tooltip title={!validationResult.result ? validationResult.reason : ""}>
+                  <Chip
+                    label={validationResult.result ? "Able to Find Route" : "Unable to Find Route"}
+                    color={validationResult.result ? "success" : "error"}
+                  />
+                </Tooltip>
+              </Box>
               <Box
                 sx={{
                   flex: 1,

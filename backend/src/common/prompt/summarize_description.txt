@@ -1,1 +1,3 @@
 Please provide a concise summary of the following description of a place in Phuket, Thailand: {des}
+
+**Note** : Exclude all unnecessary details such as ratings, stars, and review counts, but do not remove any place.

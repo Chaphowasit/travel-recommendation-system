@@ -26,7 +26,7 @@ class Chatbot:
         if not openai_api_key:
             self.logger.error("OPENAI_APIKEY not found in environment variables")
             raise ValueError("OPENAI_APIKEY environment variable is required")
-        self.model = ChatOpenAI(openai_api_key=openai_api_key, model_name="gpt-4o-mini")
+        self.model = ChatOpenAI(temperature=0.3,api_key=openai_api_key, model_name="gpt-4o")
         self.parser = StrOutputParser()
 
         self.logger.info("Setting up prompts and chains")

@@ -95,12 +95,9 @@ def fetch_place_detail(
             )
 
     output_data = {
+        "accommodations": accommodations,
         "activities": activities,
-        "accommodations": accommodations
     }
-
-    with open("place_details.json", "w", encoding="utf-8") as file:
-        json.dump(output_data, file, ensure_ascii=False, indent=4)
 
     return activities, accommodations, output_data
 
