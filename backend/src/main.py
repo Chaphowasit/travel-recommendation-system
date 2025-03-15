@@ -59,11 +59,11 @@ def fetch_mariadb():
 
         # Fetch place details from the MariaDB_Adaptor
         with MariaDB_Adaptor() as mariadb_adaptor:
-            accommodation_place_details = mariadb_adaptor.fetch_accommodations(
+            activity_place_details = mariadb_adaptor.fetch_activities(
                 place_ids=place_ids_list
             )
-
-            activity_place_details = mariadb_adaptor.fetch_activities(
+            
+            accommodation_place_details = mariadb_adaptor.fetch_accommodations(
                 place_ids=place_ids_list
             )
 
@@ -107,7 +107,8 @@ if __name__ == "__main__":
     weaviate_adapter = Weaviate_Adapter()
     with MariaDB_Adaptor() as mariadb_adaptor:
         Base.metadata.create_all(mariadb_adaptor.get_engine())
-        streaming_chatbot = StreamingChatbot(weaviate_adapter, mariadb_adaptor)
+
+    streaming_chatbot = StreamingChatbot(weaviate_adapter, mariadb_adaptor)
 
     logger.info("Starting Flask application")
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)

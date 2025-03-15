@@ -15,23 +15,36 @@ logger = logging.getLogger(__name__)
 
 class MariaDB_Adaptor:
     def __init__(self):
+        # Ensure your environment variable MARIADB_URI is set to your connection string.
+        # Format example: "mysql+mysqldb://user:password@host:port/dbname"
+        mariadb_uri = os.getenv("MARIADB_URI")
+        if not mariadb_uri:
+            raise ValueError("MARIADB_URI environment variable not set.")
+
         self.engine = sqlalchemy.create_engine(
-            os.getenv("MARIADB_URI"),
-            pool_size=10,  # Limit number of connections in the pool
-            max_overflow=5,  # Allow extra connections but limit them
-            pool_recycle=3600,  # Refresh connections every hour
-            pool_timeout=30,  # Wait for 30 seconds before giving up on a connection
-            pool_pre_ping=True,  # Check if connections are alive before using them
+            mariadb_uri,
+            pool_size=10,            # Maximum number of connections in the pool
+            max_overflow=5,          # Additional connections beyond the pool_size
+            pool_recycle=600,        # Recycle connections after 600 seconds to avoid stale connections
+            pool_timeout=600,        # Maximum wait time of 600 seconds for getting a connection from the pool
+            pool_pre_ping=True,      # Checks connection liveness before using it
+            connect_args={
+                "connect_timeout": 3600,  # Timeout in seconds for establishing a connection
+                "read_timeout": 3600,     # Timeout in seconds for reading from the connection (similar to net_read_timeout)
+                # Note: wait_timeout and interactive_timeout are server-side settings and must be set on MySQL.
+            }
         )
-        Session = sessionmaker(bind=self.engine)
-        self.Session = Session
+        self.Session = sessionmaker(bind=self.engine)
 
     def __enter__(self):
+        # Open a new session when entering the context
         self.session = self.Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # If an exception occurred, roll back the session
         if exc_type:
+            print(f"Exception: {exc_type}, {exc_val}, {exc_tb}")
             self.session.rollback()
         self.session.close()
 
@@ -66,7 +79,23 @@ class MariaDB_Adaptor:
                 .all()
         )
         except Exception as e:
+            self.session.rollback()
             logger.error(f"Error fetching accommodations: {e}")
+            accommodations = (
+                self.session.query(
+                    Accommodation.id,
+                    Accommodation.name,
+                    Accommodation.about_and_tags,
+                    Accommodation.description,
+                    Accommodation.latitude,
+                    Accommodation.longitude,
+                    Accommodation.start_time,
+                    Accommodation.end_time,
+                    Accommodation.image_url,
+                )
+                .filter(Accommodation.id.in_(place_ids))
+                .all()
+        )
             return {}
             
         for acc in accommodations:
@@ -122,7 +151,24 @@ class MariaDB_Adaptor:
                 .all()
             )
         except Exception as e:
+            self.session.rollback()
             logger.error(f"Error fetching activities: {e}")
+            activities = (
+                self.session.query(
+                    Activity.id,
+                    Activity.name,
+                    Activity.about_and_tags,
+                    Activity.description,
+                    Activity.latitude,
+                    Activity.longitude,
+                    Activity.start_time,
+                    Activity.end_time,
+                    Activity.duration,
+                    Activity.image_url,
+                )
+                .filter(Activity.id.in_(place_ids))
+                .all()
+            )
             return {}
             
         for activity in activities:
