@@ -15,7 +15,14 @@ logger = logging.getLogger(__name__)
 
 class MariaDB_Adaptor:
     def __init__(self):
-        self.engine = sqlalchemy.create_engine(os.getenv("MARIADB_URI"))
+        self.engine = sqlalchemy.create_engine(
+            os.getenv("MARIADB_URI"),
+            pool_size=10,  # Limit number of connections in the pool
+            max_overflow=5,  # Allow extra connections but limit them
+            pool_recycle=3600,  # Refresh connections every hour
+            pool_timeout=30,  # Wait for 30 seconds before giving up on a connection
+            pool_pre_ping=True,  # Check if connections are alive before using them
+        )
         Session = sessionmaker(bind=self.engine)
         self.Session = Session
 
@@ -24,7 +31,6 @@ class MariaDB_Adaptor:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-
         if exc_type:
             self.session.rollback()
         self.session.close()
@@ -43,21 +49,26 @@ class MariaDB_Adaptor:
         """
         place_details = {}
 
-        accommodations = (
-            self.session.query(
-                Accommodation.id,
-                Accommodation.name,
-                Accommodation.about_and_tags,
-                Accommodation.description,
-                Accommodation.latitude,
-                Accommodation.longitude,
-                Accommodation.start_time,
-                Accommodation.end_time,
-                Accommodation.image_url,
-            )
-            .filter(Accommodation.id.in_(place_ids))
-            .all()
+        try:
+            accommodations = (
+                self.session.query(
+                    Accommodation.id,
+                    Accommodation.name,
+                    Accommodation.about_and_tags,
+                    Accommodation.description,
+                    Accommodation.latitude,
+                    Accommodation.longitude,
+                    Accommodation.start_time,
+                    Accommodation.end_time,
+                    Accommodation.image_url,
+                )
+                .filter(Accommodation.id.in_(place_ids))
+                .all()
         )
+        except Exception as e:
+            logger.error(f"Error fetching accommodations: {e}")
+            return {}
+            
         for acc in accommodations:
             start_int, end_int = transform_time_to_int(acc.start_time, acc.end_time)
             place_details[acc.id] = {
@@ -93,22 +104,27 @@ class MariaDB_Adaptor:
         """
         place_details = {}
 
-        activities = (
-            self.session.query(
-                Activity.id,
-                Activity.name,
-                Activity.about_and_tags,
-                Activity.description,
-                Activity.latitude,
-                Activity.longitude,
-                Activity.start_time,
-                Activity.end_time,
-                Activity.duration,
-                Activity.image_url,
+        try:
+            activities = (
+                self.session.query(
+                    Activity.id,
+                    Activity.name,
+                    Activity.about_and_tags,
+                    Activity.description,
+                    Activity.latitude,
+                    Activity.longitude,
+                    Activity.start_time,
+                    Activity.end_time,
+                    Activity.duration,
+                    Activity.image_url,
+                )
+                .filter(Activity.id.in_(place_ids))
+                .all()
             )
-            .filter(Activity.id.in_(place_ids))
-            .all()
-        )
+        except Exception as e:
+            logger.error(f"Error fetching activities: {e}")
+            return {}
+            
         for activity in activities:
             start_int, end_int = transform_time_to_int(
                 activity.start_time, activity.end_time

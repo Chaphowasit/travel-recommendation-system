@@ -107,8 +107,7 @@ if __name__ == "__main__":
     weaviate_adapter = Weaviate_Adapter()
     with MariaDB_Adaptor() as mariadb_adaptor:
         Base.metadata.create_all(mariadb_adaptor.get_engine())
-
-    streaming_chatbot = StreamingChatbot(weaviate_adapter, mariadb_adaptor)
+        streaming_chatbot = StreamingChatbot(weaviate_adapter, mariadb_adaptor)
 
     logger.info("Starting Flask application")
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
