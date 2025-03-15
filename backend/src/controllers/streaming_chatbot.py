@@ -80,7 +80,7 @@ class StreamingChatbot:
     
     def summarize_description(self, des):
         result = self.summarize_description_prompt_template.format(des=des)
-        response = self.model.invoke([HumanMessage(content=result)])
+        response = self.llm.invoke([HumanMessage(content=result)])
         return response.content
     
     def name_entity_recognition(self, text):

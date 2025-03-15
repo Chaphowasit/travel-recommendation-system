@@ -101,6 +101,7 @@ class DataLoader:
         night_time = [[(sleepTime["start"], sleepTime["start"]+1)] for sleepTime in sleepTimes]
                 
         night_time[0].append((days *96, days*96))
+        night_time[0][0] = (0, 1)
         
         print(night_time)
 

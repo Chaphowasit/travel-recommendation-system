@@ -7,10 +7,8 @@ import { io } from "socket.io-client";
 import { 
   AccommodationShoppingCartItem, 
   ActivityShoppingCartItem, 
-  OptimizeRouteData, 
-  validatePayload, 
-  Zone 
-} from "../../utils/DataType/shoppingCart";
+  convertToVrpPayload, 
+  validatePayload} from "../../utils/DataType/shoppingCart";
 import { 
   CALL_ACCOMMODATION, 
   CALL_ACCOMMODATION_MESSAGE, 
@@ -22,8 +20,7 @@ import {
 } from "../../utils/DataType/message";
 import AccommodationInformation from "../PlaceInformations/AccommodationInformation.component";
 import ActivityInformation from "../PlaceInformations/ActivityInformation.component";
-import { Accommodation, Activity, Range } from "../../utils/DataType/place";
-import { dayjsStartDate, generateDateRange } from "../../utils/time";
+import { Accommodation, Activity } from "../../utils/DataType/place";
 
 interface ChatSectionProps {
   messages: Message[];
@@ -36,48 +33,6 @@ interface ChatSectionProps {
   requestCallValue: CALL_ACCOMMODATION | CALL_ACTIVITY | GENERATE_ROUTE | null;
   clearRequestCallValue: () => void;
 }
-
-const convertToVrpPayload = (
-  activityShoppingCartItems: ActivityShoppingCartItem[],
-  accommodationShoppingCartItem: AccommodationShoppingCartItem,
-  selectedDates: { startDate: Date; endDate: Date }
-): OptimizeRouteData => {
-  // Adjust zone ranges to account for the selected date range.
-  const adjustZonesToRanges = (zones: Zone[]): Range[] => {
-    if (!zones || zones.length === 0) return [];
-
-    const days = generateDateRange(selectedDates.startDate, selectedDates.endDate);
-    const adjustedRanges: Range[] = [];
-    const sortedZones = [...zones].sort((a, b) => a.date.getTime() - b.date.getTime());
-
-    for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
-      const dayStr = days[dayIndex];
-      const zonesForDay = sortedZones.filter(zone => dayjsStartDate(zone.date).format("YYYY-MM-DD") === dayStr);
-
-      zonesForDay.forEach(zone => {
-        adjustedRanges.push({
-          start: zone.range.start + 96 * dayIndex,
-          end: zone.range.end + 96 * dayIndex,
-        });
-      });
-    }
-
-    return adjustedRanges;
-  };
-
-  return {
-    accommodation: {
-      place_id: accommodationShoppingCartItem.item.id,
-      sleep_times: adjustZonesToRanges(accommodationShoppingCartItem.zones),
-    },
-    activities: activityShoppingCartItems.map(activityItem => ({
-      place_id: activityItem.item.id,
-      stay_time: activityItem.stayTime,
-      visit_range: adjustZonesToRanges(activityItem.zones),
-      must: activityItem.must,
-    })),
-  };
-};
 
 const ChatSection: React.FC<ChatSectionProps> = ({
   messages,
