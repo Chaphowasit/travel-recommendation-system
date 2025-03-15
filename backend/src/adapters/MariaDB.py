@@ -96,7 +96,7 @@ class MariaDB_Adaptor:
                 .filter(Accommodation.id.in_(place_ids))
                 .all()
         )
-            return {}
+            
             
         for acc in accommodations:
             start_int, end_int = transform_time_to_int(acc.start_time, acc.end_time)
@@ -169,7 +169,7 @@ class MariaDB_Adaptor:
                 .filter(Activity.id.in_(place_ids))
                 .all()
             )
-            return {}
+            
             
         for activity in activities:
             start_int, end_int = transform_time_to_int(
