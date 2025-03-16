@@ -102,8 +102,6 @@ class DataLoader:
                 
         night_time[0].append((days *96, days*96))
         night_time[0][0] = (0, 1)
-        
-        print(night_time)
 
         return night_time
 

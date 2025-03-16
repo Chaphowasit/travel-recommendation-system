@@ -13,6 +13,7 @@ from langchain_core.output_parsers import StrOutputParser
 
 # Local imports
 from controllers.ventical_n_day.vrp import VRPSolver
+from controllers.ventical_n_day.randomize import validate_route, randomize_payload
 from controllers.interface import fetch_place_detail
 from common.utils import read_txt_files
 from langgraph.graph import MessagesState, StateGraph, END, START
@@ -136,25 +137,43 @@ class StreamingChatbot:
         routes = ""
         if not payload:
             routes = "Sorry, unable to generate route via some restrictions"
+            response = routes
         else:
-            vrp_solver = VRPSolver(payload)
-            vrp_result = vrp_solver.solve()
-        
-            # for loop in vrp_result then adjust arrival time and departure time from quarter hour unit to 24-hour format
-            import copy
-
-            routes = []
-            for entry in vrp_result["routes"][0]:
-                entry_copy = copy.deepcopy(entry)
-                for key in ["arrival_time", "departure_time"]:
-                    unit = entry_copy[key] % 96
-                    entry_copy[key] = f"{(unit * 15) // 60:02d}:{(unit * 15) % 60:02d}"
-                entry_copy["arrival_day"] = entry["arrival_time"] // 96 + 1
-                entry_copy["departure_day"] = entry["departure_time"] // 96 + 1
-                routes.append(entry_copy)
-
+            temp_payload = payload
+            for i in range(5): 
+                vrp_solver = VRPSolver(temp_payload)
+                vrp_result = vrp_solver.solve()
+                
+                if vrp_result == None:
+                    break
+                
+                if validate_route(vrp_result["routes"][0]):
+                    break
+                else:
+                    temp_payload = randomize_payload(payload=payload)
             
-        response = "Here's your optimize traveling route!!!\n\n" + str(object=routes)
+            if vrp_result == None:
+                routes = "Sorry, No solution found with this travel plan settings"
+                response = routes
+            else:
+                vrp_solver.print_routes(vrp_result)
+                
+                # for loop in vrp_result then adjust arrival time and departure time from quarter hour unit to 24-hour format
+                import copy
+
+                routes = []
+                for entry in vrp_result["routes"][0]:
+                    entry_copy = copy.deepcopy(entry)
+                    for key in ["arrival_time", "departure_time"]:
+                        unit = entry_copy[key] % 96
+                        entry_copy[key] = f"{(unit * 15) // 60:02d}:{(unit * 15) % 60:02d}"
+                    entry_copy["arrival_day"] = entry["arrival_time"] // 96 + 1
+                    entry_copy["departure_day"] = entry["departure_time"] // 96 + 1
+                    routes.append(entry_copy)
+
+                response = "Here's your optimize traveling route!!!\n\n" + str(object=routes)
+            
+        
         return {"state_name": "Generate route", "result": vrp_result, "messages": [{"role": "system", "content": response}]}
 
     def handle_general(self, state: State):

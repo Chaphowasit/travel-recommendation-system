@@ -118,49 +118,46 @@ class DurationMatrix:
         
         
     def get_duration_matrix(self):
-        logging.info("Starting duration matrix generation.")
+        logging.debug("Starting duration matrix generation.")
         
         count_locs = len(self.locations)
         if count_locs == 0:
             logging.warning("No locations provided. Returning an empty matrix.")
             return []
 
-        logging.info(f"Number of locations: {count_locs}")
+        logging.debug(f"Number of locations: {count_locs}")
         
         negative_matrix = self._create_matrix(count_locs, count_locs, -1)
-        logging.debug("Initialized negative matrix with -1.")
 
         all_pairs = self._generate_pairs(self.order)
         logging.debug(f"Generated all pairs: {all_pairs}")
 
         existed_pairs = self.adaptor.fetch_durations(all_pairs)
-        logging.info(f"Fetched {len(existed_pairs)} existing duration pairs from the database.")
+        logging.debug(f"Fetched {len(existed_pairs)} existing duration pairs from the database.")
 
         filled_matrix = self._populate_known_durations(negative_matrix, existed_pairs, list(self.locations.keys()))
-        logging.debug("Populated known durations into the matrix.")
 
         missing_pairs = self._identify_missing_pairs(filled_matrix, list(self.locations.keys()))
-        logging.info(f"Identified {len(missing_pairs)} missing duration pairs.")
+        logging.debug(f"Identified {len(missing_pairs)} missing duration pairs.")
 
         if missing_pairs:
-            logging.info("Fetching missing durations from the external API.")
+            logging.debug("Fetching missing durations from the external API.")
             
             places_order, source_indices, destination_indices, duration_matrix = self._fetch_duration_matrix_api(missing_pairs)
-            logging.info("Successfully fetched missing durations from the external API.")
+            logging.debug("Successfully fetched missing durations from the external API.")
 
             pairs = self._get_duration_pairs(places_order, source_indices, destination_indices, duration_matrix)
-            logging.info(f"Fetched and organized {len(pairs)} duration pairs from the API.")
+            logging.debug(f"Fetched and organized {len(pairs)} duration pairs from the API.")
                 
             self.adaptor.upsert_durations(pairs)
-            logging.info("Inserted/Updated duration pairs into the database.")
+            logging.debug("Inserted/Updated duration pairs into the database.")
             
             pairs = [(e[0], e[1], transform_sec_to_int(e[2])) for e in pairs]
             
             filled_matrix = self._populate_known_durations(filled_matrix, pairs, list(self.locations.keys()))
-            logging.debug("Updated the matrix with the newly fetched durations.")
 
         final_matrix = self._reorder_matrix(filled_matrix, list(self.locations.keys()))
-        logging.info("Successfully reordered the duration matrix.")
+        logging.debug("Successfully reordered the duration matrix.")
 
         return final_matrix
     

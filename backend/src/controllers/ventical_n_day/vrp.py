@@ -163,9 +163,9 @@ class VRPSolver:
             computed_routes = self.compute_routes()
             with open("./result.json", "w") as json_file:
                 json.dump(computed_routes, json_file, indent=4)
-            self.print_routes(computed_routes)
             return computed_routes
         else:
             print("No solution found!")
             # Add debugging information:
             print(f"Routing status: {self.routing.status()}")
+            return None
