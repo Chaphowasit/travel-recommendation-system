@@ -47,10 +47,11 @@ const ChatSection: React.FC<ChatSectionProps> = ({
 }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [socket, setSocket] = useState<any>(null);
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000' ;
 
   // Initialize the WebSocket connection when the component mounts.
   useEffect(() => {
-    const newSocket = io("http://localhost:5000"); // Replace with your backend URL.
+    const newSocket = io(API_BASE_URL); // Replace with your backend URL.
     setSocket(newSocket);
 
     newSocket.on("connect", () => {

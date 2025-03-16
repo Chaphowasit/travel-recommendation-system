@@ -26,7 +26,7 @@ import {
   ActivityShoppingCartItem,
   validatePayload,
 } from "../utils/DataType/shoppingCart";
-import { dayjsStartDate, generateDateRange } from "../utils/time";
+import { dayjsStartDate } from "../utils/time";
 import { CALL_ACCOMMODATION, CALL_ACTIVITY, GENERATE_ROUTE, Message } from "../utils/DataType/message";
 
 interface PlannerViewProps {

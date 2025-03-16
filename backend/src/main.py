@@ -1,7 +1,7 @@
 import logging
 
 # Third-party imports
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO
 
@@ -14,7 +14,7 @@ from common.utils import rename_field
 
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(__name__, static_folder="../dist")
 app.config["APP_NAME"] = "Travel Recommendation System"
 
 # Apply CORS
@@ -38,10 +38,19 @@ def universal_exception_handler(exc):
 
 # Restful api
 # Root endpoint
-@app.route("/", methods=["GET"])
-def root():
-    # logger.info("Root endpoint accessed")
-    return jsonify({"service": app.config["APP_NAME"]})
+@app.route("/")
+def serve():
+    """function to serve the index.html file from the frontend folder"""
+    return send_from_directory(app.static_folder, "index.html")
+
+@app.route("/<path:path>")
+def static_proxy(path):
+    """function to serve the static files from the frontend folder"""
+    return send_from_directory(app.static_folder, path)
+# @app.route("/", methods=["GET"])
+# def root():
+#     # logger.info("Root endpoint accessed")
+#     return jsonify({"service": app.config["APP_NAME"]})
 
 # fetch data from mariadb
 @app.route("/fetch-mariadb", methods=["GET"])
@@ -111,4 +120,4 @@ if __name__ == "__main__":
     streaming_chatbot = StreamingChatbot(weaviate_adapter, mariadb_adaptor)
 
     logger.info("Starting Flask application")
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
