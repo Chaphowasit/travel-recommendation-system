@@ -88,7 +88,7 @@ const ChatSection: React.FC<ChatSectionProps> = ({
       });
       
       // Only mark loading as complete if the final state is received.
-      if (response.state_name && response.state_name === "dogshit") {
+      if (response.state_name && response.state_name === "completed") {
         setLoading(false);
       }
     });

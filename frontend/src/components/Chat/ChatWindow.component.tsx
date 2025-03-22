@@ -199,7 +199,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedDates, messages, setAct
             )}
 
             {/* Show additional details only for final bot messages */}
-            {message.sender !== 'user' && message.state === "dogshit" && (
+            {message.sender !== 'user' && message.state === "completed" && (
               <>
                 {(message.accommodations || message.activities) && <Divider sx={{ marginY: 1 }} />}
                 {message.accommodations && message.accommodations.length > 0 && (
