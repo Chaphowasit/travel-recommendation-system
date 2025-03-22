@@ -1,4 +1,5 @@
 import logging
+import os
 
 # Third-party imports
 from flask import Flask, jsonify, request, send_from_directory
@@ -38,15 +39,14 @@ def universal_exception_handler(exc):
 
 # Restful api
 # Root endpoint
-@app.route("/")
-def serve():
-    """function to serve the index.html file from the frontend folder"""
-    return send_from_directory(app.static_folder, "index.html")
+@app.route("/", defaults={"path": ""})
 
 @app.route("/<path:path>")
-def static_proxy(path):
-    """function to serve the static files from the frontend folder"""
-    return send_from_directory(app.static_folder, path)
+def serve(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, "index.html")
 # @app.route("/", methods=["GET"])
 # def root():
 #     # logger.info("Root endpoint accessed")
