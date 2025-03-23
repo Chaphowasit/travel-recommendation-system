@@ -47,10 +47,6 @@ def serve(path):
         return send_from_directory(app.static_folder, path)
     else:
         return send_from_directory(app.static_folder, "index.html")
-# @app.route("/", methods=["GET"])
-# def root():
-#     # logger.info("Root endpoint accessed")
-#     return jsonify({"service": app.config["APP_NAME"]})
 
 # fetch data from mariadb
 @app.route("/fetch-mariadb", methods=["GET"])
@@ -107,9 +103,14 @@ def handle_disconnect():
     
 @socketio.on('message')
 def handle_message(message):
-    print(message)
-    for response in streaming_chatbot.response(message.get("text", ""), message.get("payload", {})):
-        socketio.emit("message", response)
+    user_id = request.sid  # Use session ID as a unique identifier for memory storage
+
+    for response in streaming_chatbot.response(
+        message.get("text", ""),
+        message.get("payload", {}),
+        user_id  # Pass user_id to track memory per user
+    ):
+        socketio.emit("message", response, room=request.sid)
 
 if __name__ == "__main__":
     

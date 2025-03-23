@@ -17,6 +17,7 @@ from controllers.ventical_n_day.randomize import validate_route, randomize_paylo
 from controllers.interface import fetch_place_detail
 from common.utils import read_txt_files
 from langgraph.graph import MessagesState, StateGraph, END, START
+from langchain.memory import ConversationBufferWindowMemory
 from pydantic import BaseModel, Field
 
 
@@ -41,7 +42,17 @@ class StreamingChatbot:
         self.config = {"configurable": {"thread_id": str(uuid.uuid4())}}
         self.weaviate_adapter = weaviate_adapter
         self.mariadb_adaptor = mariadb_adaptor
+
+        # Dictionary to store memory per user session
+        self.user_memories = {}
+
         self._init_prompt_and_chain()
+
+    def get_memory(self, user_id):
+        """Retrieve or create a memory buffer for a user."""
+        if user_id not in self.user_memories:
+            self.user_memories[user_id] = ConversationBufferWindowMemory(k=5, return_messages=True)
+        return self.user_memories[user_id]
 
     def _init_prompt_and_chain(self):
         parser = StrOutputParser()
@@ -207,73 +218,75 @@ class StreamingChatbot:
         
         return workflow.compile()
 
-    def response(self, msg, payload):
+    def response(self, msg, payload, user_id):
+        """
+        Handles user messages and maintains memory per user session.
+        - `user_id`: Unique identifier for the user (e.g., session ID, user ID)
+        """
         global NEXT_STATE_NAME
         NEXT_STATE_NAME = "intent classification"
-        mode="general"
-        response = dict()
-        response["state_name"] = "landing"
+        mode = "general"
+        response = {"state_name": "landing"}
         yield response
 
-        state = State(messages=[{"role": "user", "content": msg}], payload=payload)
-        
+        # Get or create memory for the user
+        memory = self.get_memory(user_id)
+
+        # Retrieve past conversations for context
+        past_messages = memory.load_memory_variables({}).get("history", [])
+
+        # Add user message to the conversation history
+        state = State(messages=past_messages + [{"role": "user", "content": msg}], payload=payload)
+
         for step in self.graph.stream(state, stream_mode="values", config=self.config):
             lastest_step = step
             response["state_name"] = NEXT_STATE_NAME
+
             if NEXT_STATE_NAME == "summarize the place":
                 response["recommendations"] = lastest_step["result"]
-                mode="summarize_place"
+                mode = "summarize_place"
             elif NEXT_STATE_NAME == "response route":
                 response["route"] = lastest_step["result"]
-                mode="summarize_route"
+                mode = "summarize_route"
             yield response
 
         content = lastest_step["messages"][-1]["content"]
-        yield from self.streaming_summarize_chatbot(msg, response, content, mode)
-        
-        yield {"state_name": "dogshit"}
-    
-    def streaming_summarize_chatbot(self, user_input, response, content, mode):
-        response = dict()
-        response["state_name"] = "summarize answer"
-        
-        chat_model = ChatOpenAI(
-            api_key=self.api_key,
-            streaming=True,
-            model_name="gpt-3.5-turbo"
-        )
-        
-        print(content)
+        yield from self.streaming_summarize_chatbot(msg, response, content, mode, user_id)
 
+        yield {"state_name": "completed"}
+
+    def streaming_summarize_chatbot(self, user_input, response, content, mode, user_id):
+        """Handles summarization with memory storage."""
+        response = {"state_name": "summarize answer"}
+        
+        chat_model = ChatOpenAI(api_key=self.api_key, streaming=True, model_name="gpt-3.5-turbo")
+        
         if mode == "summarize_route":
-            # Use ChatPromptTemplate for the summarize_route mode
-
             system_message_template = self.summarize_route_prompt
-
-            messages = [
-                    ("system", system_message_template),
-                    ("human", f"My route is: {content}"),
-                ]
-            
+            messages = [("system", system_message_template), ("human", f"My route is: {content}")]
         else:
-            # For other modes, use the existing approach
             if mode == "summarize_place":
-                
                 prompt_template = PromptTemplate.from_template(self.summarize_recommendation_prompt)
                 system_prompt = prompt_template.format(user_input=user_input)
             else:
-                if content == "etc_other":
-                    system_prompt = self.etc_non_travel_answer_prompt
-                elif content == "etc_travel":
-                    system_prompt = self.etc_travel_answer_prompt
-
+                system_prompt = self.etc_travel_answer_prompt if content == "etc_travel" else self.etc_non_travel_answer_prompt
                 content = user_input
+
             messages = [
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=str(content))
             ]
 
-        # Stream the output from the chat model using the messages prepared above
+        # Get memory for the user and include past interactions
+        memory = self.get_memory(user_id)
+        past_messages = memory.load_memory_variables({}).get("history", [])
+        messages = past_messages + messages
+
+        result = ""
         for chunk in chat_model.stream(messages):
-            response["message"] = chunk.content 
+            response["message"] = chunk.content
+            result += chunk.content
             yield response
+
+        # Save conversation context for this user
+        memory.save_context({"input": user_input}, {"output": result})
